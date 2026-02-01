@@ -1,0 +1,1023 @@
+openapi: 3.0.3
+info:
+  title: ProtoHub API
+  description: Protobuf 接口文件管理系统 RESTful API
+  version: 1.0.0
+  contact:
+    name: ProtoHub Team
+    email: support@protohub.example.com
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: 本地开发服务器
+
+tags:
+  - name: 认证
+    description: 用户认证相关接口
+  - name: 用户管理
+    description: 用户信息管理
+  - name: 文件管理
+    description: Proto 文件的 CRUD 操作
+  - name: 版本管理
+    description: 文件版本历史
+  - name: 审核流程
+    description: 文件审核工作流
+  - name: 检查报告
+    description: 自动检查规则执行结果
+  - name: 依赖关系
+    description: 文件依赖关系查询
+  - name: Git 仓库
+    description: Git 仓库配置和导入
+  - name: 子系统
+    description: 业务子系统管理
+
+paths:
+  # ==================== 认证 ====================
+  /auth/login:
+    post:
+      tags: [认证]
+      summary: 用户登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  description: 用户名
+                  example: "zhangsan"
+                password:
+                  type: string
+                  format: password
+                  description: 密码
+                  example: "Password123!"
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: JWT 认证令牌
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/register:
+    post:
+      tags: [认证]
+      summary: 用户注册
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password, role]
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                role:
+                  type: string
+                  enum: [developer, reviewer, admin]
+                  default: developer
+      responses:
+        '201':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # ==================== 用户管理 ====================
+  /users:
+    get:
+      tags: [用户管理]
+      summary: 获取用户列表
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 用户列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  pageSize:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/{userId}:
+    get:
+      tags: [用户管理]
+      summary: 获取用户详情
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: 用户详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== 文件管理 ====================
+  /files:
+    get:
+      tags: [文件管理]
+      summary: 获取 Proto 文件列表
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+        - name: subsystemId
+          in: query
+          description: 按子系统筛选
+          schema:
+            type: integer
+        - name: status
+          in: query
+          description: 按状态筛选
+          schema:
+            type: string
+            enum: [draft, pending_review, approved, rejected]
+        - name: search
+          in: query
+          description: 搜索关键词（文件名、包名、消息名）
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 文件列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProtoFile'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  pageSize:
+                    type: integer
+
+    post:
+      tags: [文件管理]
+      summary: 创建 Proto 文件
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, subsystemId]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Proto 文件（.proto）
+                subsystemId:
+                  type: integer
+                  description: 所属子系统 ID
+      responses:
+        '201':
+          description: 文件创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProtoFile'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /files/{fileId}:
+    get:
+      tags: [文件管理]
+      summary: 获取 Proto 文件详情
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      responses:
+        '200':
+          description: 文件详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProtoFileDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [文件管理]
+      summary: 更新 Proto 文件（需要文件锁）
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  description: Proto 文件内容
+                changeNote:
+                  type: string
+                  description: 变更说明
+      responses:
+        '200':
+          description: 文件更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProtoFile'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: 文件已被其他用户锁定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+
+    delete:
+      tags: [文件管理]
+      summary: 删除 Proto 文件
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      responses:
+        '204':
+          description: 删除成功
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: 存在依赖关系，无法删除
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "文件被以下文件引用: user_service.proto, order_api.proto"
+
+  /files/{fileId}/lock:
+    post:
+      tags: [文件管理]
+      summary: 获取文件编辑锁
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      responses:
+        '200':
+          description: 文件已锁定
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "文件已锁定"
+                  lockedBy:
+                    $ref: '#/components/schemas/User'
+                  lockedAt:
+                    type: string
+                    format: date-time
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: 文件已被其他用户锁定
+          $ref: '#/components/responses/ConflictError'
+
+  /files/{fileId}/unlock:
+    post:
+      tags: [文件管理]
+      summary: 释放文件编辑锁
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      responses:
+        '200':
+          description: 文件已解锁
+        '403':
+          description: 无权限解锁（不是锁定者或管理员）
+
+  /files/{fileId}/submit-review:
+    post:
+      tags: [文件管理]
+      summary: 提交文件审核
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      responses:
+        '200':
+          description: 提交成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+
+  # ==================== 版本管理 ====================
+  /files/{fileId}/versions:
+    get:
+      tags: [版本管理]
+      summary: 获取文件版本历史
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      responses:
+        '200':
+          description: 版本列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FileVersion'
+                  current:
+                    type: integer
+                    description: 当前版本号
+
+  /files/{fileId}/versions/diff:
+    get:
+      tags: [版本管理]
+      summary: 对比两个版本差异
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+        - name: version1
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: version2
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 版本差异
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  diff:
+                    type: string
+                    description: 统一差异格式（如 DiffUtils 输出）
+                  version1:
+                    $ref: '#/components/schemas/FileVersion'
+                  version2:
+                    $ref: '#/components/schemas/FileVersion'
+
+  # ==================== 审核流程 ====================
+  /reviews:
+    get:
+      tags: [审核流程]
+      summary: 获取待审核列表
+      parameters:
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 审核列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reviews:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Review'
+                  total:
+                    type: integer
+
+  /reviews/{reviewId}/approve:
+    post:
+      tags: [审核流程]
+      summary: 批准文件审核
+      parameters:
+        - $ref: '#/components/parameters/ReviewId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment:
+                  type: string
+                  description: 审核意见
+      responses:
+        '200':
+          description: 批准成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /reviews/{reviewId}/reject:
+    post:
+      tags: [审核流程]
+      summary: 拒绝文件审核
+      parameters:
+        - $ref: '#/components/parameters/ReviewId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [comment]
+              properties:
+                comment:
+                  type: string
+                  description: 拒绝原因
+      responses:
+        '200':
+          description: 拒绝成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== 检查报告 ====================
+  /files/{fileId}/check:
+    post:
+      tags: [检查报告]
+      summary: 执行自动检查规则
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      responses:
+        '200':
+          description: 检查完成
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckReport'
+
+  # ==================== 依赖关系 ====================
+  /dependencies/graph:
+    get:
+      tags: [依赖关系]
+      summary: 获取依赖关系图数据
+      parameters:
+        - name: fileId
+          in: query
+          description: 过滤到特定文件的依赖
+          schema:
+            type: integer
+        - name: subsystemId
+          in: query
+          description: 过滤到特定子系统的依赖
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 依赖图数据
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nodes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DependencyNode'
+                  edges:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DependencyEdge'
+                  circularDependencies:
+                    type: array
+                    description: 循环依赖路径
+                    items:
+                      type: array
+                      items:
+                        type: string
+
+  /files/{fileId}/impact-analysis:
+    get:
+      tags: [依赖关系]
+      summary: 分析文件变更影响范围
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+      responses:
+        '200':
+          description: 影响分析结果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  affectedSubsystems:
+                    type: array
+                    items:
+                      type: string
+                  affectedFiles:
+                    type: integer
+                  dependencyChain:
+                    type: array
+                    items:
+                      type: string
+
+  # ==================== Git 仓库 ====================
+  /git-repos:
+    get:
+      tags: [Git 仓库]
+      summary: 获取 Git 仓库列表
+      responses:
+        '200':
+          description: 仓库列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  repos:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GitRepo'
+
+    post:
+      tags: [Git 仓库]
+      summary: 添加 Git 仓库配置
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, repoUrl, branch]
+              properties:
+                name:
+                  type: string
+                repoUrl:
+                  type: string
+                  format: uri
+                branch:
+                  type: string
+                  default: main
+                username:
+                  type: string
+                password:
+                  type: string
+                sshKey:
+                  type: string
+      responses:
+        '201':
+          description: 仓库配置成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitRepo'
+
+  /git-repos/{repoId}/import:
+    post:
+      tags: [Git 仓库]
+      summary: 从 Git 仓库导入 Proto 文件
+      parameters:
+        - $ref: '#/components/parameters/RepoId'
+      responses:
+        '200':
+          description: 导入成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  importedCount:
+                    type: integer
+                  files:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProtoFile'
+                  errors:
+                    type: array
+                    items:
+                      type: object
+
+  /git-repos/{repoId}/check-consistency:
+    get:
+      tags: [Git 仓库]
+      summary: 检查 Git 仓库与本地文件一致性
+      parameters:
+        - $ref: '#/components/parameters/RepoId'
+      responses:
+        '200':
+          description: 一致性检查结果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  consistent:
+                    type: boolean
+                  differences:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        file:
+                          type: string
+                        type:
+                          type: string
+                          enum: [added, modified, deleted]
+                        details:
+                          type: string
+
+  # ==================== 子系统 ====================
+  /subsystems:
+    get:
+      tags: [子系统]
+      summary: 获取子系统列表
+      responses:
+        '200':
+          description: 子系统列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Subsystem'
+
+    post:
+      tags: [子系统]
+      summary: 创建子系统
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                owner:
+                  type: string
+      responses:
+        '201':
+          description: 子系统创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subsystem'
+
+components:
+  parameters:
+    FileId:
+      name: fileId
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Proto 文件 ID
+
+    RepoId:
+      name: repoId
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Git 仓库配置 ID
+
+    ReviewId:
+      name: reviewId
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: 审核记录 ID
+
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: 用户 ID
+
+    PageNumber:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+
+  responses:
+    Unauthorized:
+      description: 未认证
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "未认证，请先登录"
+
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "资源不存在"
+
+    BadRequest:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              details:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    field:
+                      type: string
+                    message:
+                      type: string
+
+    UnprocessableEntity:
+      description: 业务规则校验失败
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              violations:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Violation'
+
+    ConflictError:
+      description: 资源冲突（如文件锁定）
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "文件已被其他用户锁定"
+              lockedBy:
+                $ref: '#/schemas/User'
+              lockedAt:
+                type: string
+                format: date-time
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [developer, reviewer, admin]
+        createdAt:
+          type: string
+          format: date-time
+
+    ProtoFile:
+      type: object
+      properties:
+        id:
+          type: integer
+        filename:
+          type: string
+        packageName:
+          type: string
+        subsystem:
+          $ref: '#/components/schemas/Subsystem'
+        status:
+          type: string
+          enum: [draft, pending_review, approved, rejected]
+        currentVersion:
+          type: integer
+        createdBy:
+          $ref: '#/components/schemas/User'
+        createdAt:
+          type: string
+          format: date-time
+        locked:
+          type: boolean
+        lockedBy:
+          type: object
+          nullable: true
+
+    ProtoFileDetail:
+      allOf:
+        - $ref: '#/components/schemas/ProtoFile'
+        - type: object
+          properties:
+            content:
+              type: string
+              description: Proto 文件内容
+            gitRepo:
+              $ref: '#/components/schemas/GitRepo'
+              nullable: true
+
+    FileVersion:
+      type: object
+      properties:
+        id:
+          type: integer
+        version:
+          type: integer
+        filePath:
+          type: string
+        changeNote:
+          type: string
+        modifiedBy:
+          $ref: '#/components/schemas/User'
+        modifiedAt:
+          type: string
+          format: date-time
+
+    Review:
+      type: object
+      properties:
+        id:
+          type: integer
+        file:
+          $ref: '#/components/schemas/ProtoFile'
+        fileVersion:
+          $ref: '#/components/schemas/FileVersion'
+        submittedBy:
+          $ref: '#/components/schemas/User'
+        submittedAt:
+          type: string
+          format: date-time
+        reviewedBy:
+          $ref: '#/components/schemas/User'
+          nullable: true
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [pending_review, approved, rejected]
+        reviewComment:
+          type: string
+          nullable: true
+
+    CheckReport:
+      type: object
+      properties:
+        id:
+          type: integer
+        file:
+          $ref: '#/components/schemas/ProtoFile'
+        checkedAt:
+          type: string
+          format: date-time
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Violation'
+        passed:
+          type: boolean
+          description: 是否通过所有检查
+
+    Violation:
+      type: object
+      properties:
+        id:
+          type: integer
+        ruleType:
+          type: string
+          enum:
+            [naming_file, naming_package, naming_message, naming_field,
+             naming_service, vocabulary, common_interface]
+        severity:
+          type: string
+          enum: [error, warning, info]
+        fileLine:
+          type: integer
+        violationMessage:
+          type: string
+        suggestion:
+          type: string
+
+    DependencyNode:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+          enum: [subsystem, file]
+        category:
+          type: string
+          nullable: true
+
+    DependencyEdge:
+      type: object
+      properties:
+        source:
+          type: string
+        target:
+          type: string
+        type:
+          type: string
+          enum: [import]
+
+    GitRepo:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        repoUrl:
+          type: string
+          format: uri
+        branch:
+          type: string
+        lastSyncAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    Subsystem:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        owner:
+          type: string
+        createdAt:
+          type: string
+          format: date-time

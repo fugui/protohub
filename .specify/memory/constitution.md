@@ -1,50 +1,194 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+SYNC IMPACT REPORT
+==================
+Version change: [NONE] → 1.0.0
+Modified principles: None (initial constitution)
+Added sections:
+  - Core Principles (3 principles)
+  - Code Quality Standards
+  - Documentation Standards
+Removed sections: None
+Templates requiring updates:
+  ✅ .specify/templates/plan-template.md - No changes needed, template structure already compatible
+  ✅ .specify/templates/spec-template.md - No changes needed, template structure already compatible
+  ✅ .specify/templates/tasks-template.md - No changes needed, template structure already compatible
+  ✅ .specify/templates/checklist-template.md - No changes needed, template structure already compatible
+Follow-up TODOs: None
+-->
 
-## Core Principles
+# ProtoHub 宪法
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+## 核心原则
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### 一、中文文档优先
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+所有项目文档、注释、技术规范和说明材料必须使用中文编写。
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+**规则**：
+- 代码注释（包括单行注释、多行注释、文档字符串）必须使用中文
+- README、技术文档、API 文档、设计文档必须使用中文
+- 用户指南、开发手册、部署文档必须使用中文
+- 代码中的变量名、函数名、类名等标识符可以使用英文（符合业界惯例）
+- 变更日志、提交信息建议使用中文以便团队理解
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+**理由**：团队成员全部为中文母语者，使用中文文档可以最大程度降低沟通成本，确保信息准确传达，避免翻译歧义，提高团队协作效率。
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+---
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### 二、大规模团队架构规范
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+团队规模超过100人，所有架构设计必须清晰、模块化，代码质量要求高标准。
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+**规则**：
+- **架构清晰性**：
+  - 采用分层架构，明确各层职责（表现层、业务逻辑层、数据访问层等）
+  - 模块间依赖关系必须清晰，避免循环依赖
+  - 核心业务逻辑与技术细节分离
+  - 使用接口定义明确的模块边界
 
-## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
+- **代码质量要求**：
+  - 代码可读性：遵循统一的代码风格和命名规范
+  - 代码复杂度：单个函数/方法不超过50行，圈复杂度不超过10
+  - 代码复用：消除重复代码，提取公共组件和工具类
+  - 错误处理：明确的异常处理机制，统一的错误响应格式
+  - 日志规范：关键操作必须记录日志，日志级别使用恰当
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- **测试覆盖**：
+  - 核心业务逻辑必须有单元测试，覆盖率不低于80%
+  - 关键接口必须有集成测试
+  - 新功能开发必须包含测试用例
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+- **代码审查**：
+  - 所有代码变更必须经过至少一人审查
+  - 审查关注点：架构合理性、代码质量、安全性、性能
+  - 审查通过后方可合并到主分支
+
+**理由**：大规模团队协作需要统一的架构标准和质量规范，避免代码腐化和技术债务积累，确保系统的可维护性和可扩展性。
+
+---
+
+### 三、接口文档化与规范
+
+所有接口（API、服务间调用、公共方法）必须明确文档化，RESTful API 必须提前采用 OpenAPI 3.0 规范定义。
+
+**规则**：
+- **RESTful API 规范**：
+  - 在实现前必须使用 OpenAPI 3.0 规范定义 API 接口
+  - OpenAPI 文档必须包含完整的端点定义、请求/响应格式、参数说明
+  - 支持多格式响应（JSON、XML等）需在文档中明确
+  - API 文档必须同步维护，与实现保持一致
+
+- **接口定义要求**：
+  - 明确接口的功能描述和用途
+  - 列出所有请求参数（路径参数、查询参数、请求体）
+  - 定义请求参数的类型、必填/可选、取值范围、示例值
+  - 定义响应体的结构和字段说明
+  - 明确可能的错误码和错误信息
+
+- **服务间接口**：
+  - 微服务间的 RPC 调用必须有接口契约文档
+  - 公共 SDK 库必须有完整的 API 文档
+  - 数据库访问层（DAO）必须有方法签名和用途说明
+
+- **文档维护**：
+  - 接口变更必须同步更新文档
+  - 废弃接口必须标记废弃时间和替代方案
+  - 文档评审作为代码审查的一部分
+
+**理由**：清晰的接口文档是团队协作的基础，前后端开发人员可以并行工作，减少沟通成本。提前定义接口可以及早发现设计问题，避免返工。
+
+---
+
+## 代码质量标准
+
+### 编码规范
+
+- 遵循项目统一的代码风格指南（根据语言选择，如：PEP8、Google Java Style、ESLint 规则等）
+- 类、方法、变量命名必须语义清晰，避免缩写和模糊命名
+- 文件组织合理，单个文件不超过500行代码
+
+### 架构原则
+
+- **单一职责原则**：每个模块/类/函数只负责一个明确的功能
+- **开闭原则**：对扩展开放，对修改关闭，通过接口和多态实现扩展
+- **依赖倒置原则**：高层模块不依赖低层模块，都依赖抽象接口
+- **接口隔离原则**：接口设计要细粒度，客户端不应依赖它不需要的接口
+
+### 性能要求
+
+- API 响应时间：P95 延迟不超过 200ms（简单查询）、500ms（复杂查询）
+- 数据库查询：单次查询避免全表扫描，合理使用索引
+- 内存使用：避免内存泄漏，及时释放资源
+- 并发处理：核心接口必须支持高并发，做好线程安全保护
+
+### 安全规范
+
+- 用户输入必须进行验证和过滤，防止注入攻击
+- 敏感数据（密码、密钥）必须加密存储
+- 接口访问必须有身份认证和权限控制
+- 定期进行安全审计和漏洞扫描
+
+---
+
+## 文档标准
+
+### 文档结构
+
+每个功能模块应包含以下文档：
+- **设计文档**：描述功能设计思路、技术选型、架构决策
+- **API 文档**：所有接口的详细说明（OpenAPI 规范）
+- **开发文档**：环境搭建、代码结构、开发规范
+- **测试文档**：测试用例、测试策略、测试结果
+- **运维文档**：部署流程、监控指标、故障排查
+
+### 文档语言
+
+- 所有文档使用中文编写
+- 技术术语可以保留英文（如：REST、OAuth、JWT）
+- 示例代码可以使用英文变量名和注释
+
+### 文档更新
+
+- 功能变更时同步更新相关文档
+- 定期（每季度）审查文档的时效性和准确性
+- 废弃的功能模块标记文档状态
+
+---
+
+## 治理
+
+### 修订流程
+
+1. **提案**：团队成员提出宪法修订提案，说明修订理由和内容
+2. **评审**：技术委员会审查提案，评估影响范围
+3. **投票**：核心成员投票决定是否采纳（超过三分之二同意）
+4. **更新**：更新宪法文档，递增版本号（遵循语义化版本）
+5. **同步**：更新相关模板和指导文档
+6. **通知**：通知全体成员修订内容
+
+### 版本控制
+
+- 版本号采用语义化版本格式：MAJOR.MINOR.PATCH
+  - MAJOR：向后不兼容的原则修订或删除
+  - MINOR：新增原则或对现有原则的重大扩展
+  - PATCH：措辞修正、错别字更正、非语义细化
+- 每次修订必须记录修订日期、修订内容、修订人
+
+### 合规检查
+
+- 所有 PR 和代码审查必须验证是否符合宪法原则
+- 复杂性或违反常规的设计必须有明确的论证
+- 定期（每月）进行合规性审查，检查项目是否符合宪法规范
+- 合规性审查结果纳入团队绩效考核
+
+### 异常处理
+
+- 特殊情况下需要暂时违反某条原则，必须：
+  1. 提交书面申请，说明理由和预计恢复时间
+  2. 技术委员会审批
+  3. 记录到项目日志
+  4. 按时恢复合规状态
+
+---
+
+**版本**: 1.0.0 | **批准日期**: 2026-01-31 | **最后修订**: 2026-01-31

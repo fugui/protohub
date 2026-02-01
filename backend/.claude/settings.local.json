@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm cache clean:*)",
+      "Bash(npm install:*)",
+      "Bash(set:*)",
+      "Bash(npm config set:*)",
+      "Bash(npm config set C++_STANDARD 20)",
+      "Bash(npm run install:*)",
+      "Bash(node ../node-gyp/bin/node-gyp.js rebuild --release:*)",
+      "Bash(node:*)"
+    ]
+  }
+}

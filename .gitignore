@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Database files (for SQLite)
+storage/database/*.db
+storage/database/*.db-shm
+storage/database/*.db-wal
+!storage/database/.gitkeep
+
+# Storage directories
+storage/proto-files/*
+storage/git-cache/*
+storage/uploads/*
+!storage/proto-files/.gitkeep
+!storage/git-cache/.gitkeep
+!storage/uploads/.gitkeep
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+coverage/
+*.lcov
+
+# Temporary files
+*.tmp
+.cache/
+
+# OS specific
+Thumbs.db
+nul
