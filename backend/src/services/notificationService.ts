@@ -2,8 +2,6 @@
  * 通知服务
  */
 
-import type { User } from 'protohub-shared';
-
 /**
  * 通知数据
  */

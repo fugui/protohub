@@ -3,6 +3,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+const multer = require('multer');
 import { asyncHandler } from '../../middlewares/errorHandler';
 import {
   getFiles,
@@ -14,8 +15,16 @@ import {
   unlockFile,
   submitReview,
 } from '../controllers/file.controller';
+import { runCheck } from '../controllers/check.controller';
 
 const router = Router();
+
+// Configure multer for file uploads
+const upload = multer({
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB
+  },
+});
 
 /**
  * GET /api/v1/files
@@ -42,8 +51,9 @@ router.get(
  */
 router.post(
   '/',
+  upload.single('file'),
   asyncHandler(async (req: Request, res: Response) => {
-    const result = await createFile(req);
+    const result = await createFile(req, req.body);
     res.status(201).json(result);
   })
 );
@@ -83,7 +93,7 @@ router.delete(
   asyncHandler(async (req: Request, res: Response) => {
     const fileId = parseInt(req.params.fileId);
     await deleteFile(fileId, req);
-    res.status(204).send();
+    res.json({ message: '文件已删除' });
   })
 );
 
@@ -122,6 +132,19 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const fileId = parseInt(req.params.fileId);
     const result = await submitReview(fileId, req);
+    res.json(result);
+  })
+);
+
+/**
+ * POST /api/v1/files/:fileId/check
+ * 执行文件检查
+ */
+router.post(
+  '/:fileId/check',
+  asyncHandler(async (req: Request, res: Response) => {
+    const fileId = parseInt(req.params.fileId);
+    const result = await runCheck(fileId);
     res.json(result);
   })
 );

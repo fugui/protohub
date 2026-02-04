@@ -26,7 +26,7 @@ router.post(
  * 获取检查报告详情
  */
 router.get(
-  '/checks/:reportId',
+  '/:reportId',
   asyncHandler(async (req: Request, res: Response) => {
     const reportId = parseInt(req.params.reportId);
     const result = await getReport(reportId);

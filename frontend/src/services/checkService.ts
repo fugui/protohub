@@ -3,7 +3,7 @@
  */
 
 import axios from 'axios';
-import type { CheckReport, Violation, PaginatedResponse } from 'protohub-shared';
+import type { CheckReport } from 'protohub-shared';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 const api = axios.create({

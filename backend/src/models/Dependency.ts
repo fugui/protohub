@@ -4,11 +4,16 @@
 
 import type { DependencyEntity } from 'protohub-shared';
 import { BaseRepository } from '../config/database';
+import type Database from 'better-sqlite3';
 import { getDatabase } from '../config/db';
 
 export class DependencyRepository extends BaseRepository<DependencyEntity> {
   constructor() {
-    super(getDatabase(), 'dependencies', 'id');
+    super('dependencies', 'id');
+  }
+
+  protected getDb(): Database.Database {
+    return getDatabase();
   }
 
   /**
@@ -28,7 +33,7 @@ export class DependencyRepository extends BaseRepository<DependencyEntity> {
   /**
    * 创建依赖关系
    */
-  create(data: Omit<DependencyEntity, 'id' | 'created_at'>): number {
+  create(data: Omit<DependencyEntity, 'id'>): number {
     const result = this.insert({
       ...data,
       created_at: new Date().toISOString(),
@@ -40,7 +45,7 @@ export class DependencyRepository extends BaseRepository<DependencyEntity> {
    * 删除文件的所有依赖关系
    */
   deleteByFileId(fileId: number): void {
-    const db = getDatabase();
+    const db = this.getDb();
     db.prepare(`DELETE FROM dependencies WHERE source_file_id = ?`).run(fileId);
     db.prepare(`DELETE FROM dependencies WHERE target_file_id = ?`).run(fileId);
   }
@@ -49,14 +54,14 @@ export class DependencyRepository extends BaseRepository<DependencyEntity> {
    * 查询所有依赖关系
    */
   findAll(): DependencyEntity[] {
-    return this.findAllBase();
+    return super.findAll();
   }
 
   /**
    * 检测循环依赖
    */
   detectCircularDependencies(): string[][] {
-    const db = getDatabase();
+    const db = this.getDb();
     const allDeps = db
       .prepare(`
         SELECT source_file_id, target_file_id

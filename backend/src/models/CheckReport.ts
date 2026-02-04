@@ -4,11 +4,16 @@
 
 import type { CheckReportEntity, ViolationEntity } from 'protohub-shared';
 import { BaseRepository } from '../config/database';
+import type Database from 'better-sqlite3';
 import { getDatabase } from '../config/db';
 
 export class CheckReportRepository extends BaseRepository<CheckReportEntity> {
   constructor() {
-    super(getDatabase(), 'check_reports', 'id');
+    super('check_reports', 'id');
+  }
+
+  protected getDb(): Database.Database {
+    return getDatabase();
   }
 
   /**
@@ -31,10 +36,9 @@ export class CheckReportRepository extends BaseRepository<CheckReportEntity> {
   /**
    * 创建检查报告
    */
-  create(data: Omit<CheckReportEntity, 'id' | 'checked_at'>): number {
+  create(data: Omit<CheckReportEntity, 'id'>): number {
     const result = this.insert({
       ...data,
-      checked_at: new Date().toISOString(),
     });
     return Number(result.lastInsertRowid);
   }
@@ -43,9 +47,13 @@ export class CheckReportRepository extends BaseRepository<CheckReportEntity> {
 /**
  * 违规项数据模型
  */
-export class ViolationRepository extends BaseRepository<ViolationEntity> {
+export class CheckViolationRepository extends BaseRepository<ViolationEntity> {
   constructor() {
-    super(getDatabase(), 'violations', 'id');
+    super('violations', 'id');
+  }
+
+  protected getDb(): Database.Database {
+    return getDatabase();
   }
 
   /**
@@ -59,7 +67,7 @@ export class ViolationRepository extends BaseRepository<ViolationEntity> {
    * 批量创建违规项
    */
   createMany(violations: Omit<ViolationEntity, 'id'>[]): void {
-    const db = getDatabase();
+    const db = this.getDb();
     const stmt = db.prepare(`
       INSERT INTO violations (report_id, rule_type, severity, file_line, violation_message, suggestion)
       VALUES (?, ?, ?, ?, ?, ?)
@@ -84,4 +92,4 @@ export class ViolationRepository extends BaseRepository<ViolationEntity> {
 
 // 导出单例
 export const checkReportRepository = new CheckReportRepository();
-export const violationRepository = new ViolationRepository();
+export const checkViolationRepository = new CheckViolationRepository();

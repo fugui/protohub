@@ -9,7 +9,7 @@ import type { VocabularyTerm } from 'protohub-shared';
  * 获取所有术语
  */
 export function getAllTerms(): VocabularyTerm[] {
-  const entities = vocabularyTermRepository.getAllTerms();
+  const entities = vocabularyTermRepository.getAllTermEntities();
   return entities.map((entity) => ({
     id: entity.id,
     term: entity.term,

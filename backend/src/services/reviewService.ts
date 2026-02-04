@@ -4,7 +4,7 @@
 
 import { reviewRepository } from '../models/Review';
 import { protoFileRepository } from '../models/ProtoFile';
-import type { Review, User } from 'protohub-shared';
+import type { Review } from 'protohub-shared';
 import { NotFoundError, ValidationError } from '../middlewares/errorHandler';
 
 /**
@@ -16,17 +16,21 @@ export function getPendingReviews(params: { page: number; pageSize: number }): {
 } {
   const result = reviewRepository.findPendingReviews(params);
 
-  const reviews = result.data.map((entity) => ({
+  const reviews = result.data.map((entity: any) => ({
     id: entity.id,
     file: {
       id: entity.file_id,
       filename: '',
       packageName: '',
+      subsystem: 0,
       status: 'draft',
       currentVersion: 1,
+      createdBy: { id: 0, username: '', email: '', role: 'developer', createdAt: '' },
       createdAt: '',
       updatedAt: '',
       locked: false,
+      lockedBy: null,
+      lockedAt: null,
     },
     fileVersion: entity.file_version_id
       ? {
@@ -81,11 +85,15 @@ export function getReviewById(reviewId: number): Review | undefined {
       id: entity.file_id,
       filename: '',
       packageName: '',
+      subsystem: 0,
       status: 'draft',
       currentVersion: 1,
+      createdBy: { id: 0, username: '', email: '', role: 'developer', createdAt: '' },
       createdAt: '',
       updatedAt: '',
       locked: false,
+      lockedBy: null,
+      lockedAt: null,
     },
     fileVersion: entity.file_version_id
       ? {
@@ -181,6 +189,7 @@ export function createReview(fileId: number, submittedBy: number): Review {
     file_id: fileId,
     file_version_id: null, // TODO: 获取当前版本 ID
     submitted_by: submittedBy,
+    submitted_at: new Date().toISOString(),
     status: 'pending_review',
     review_comment: null,
   });
@@ -194,17 +203,21 @@ export function createReview(fileId: number, submittedBy: number): Review {
 export function getReviewsByFileId(fileId: number): Review[] {
   const entities = reviewRepository.findByFileId(fileId);
 
-  return entities.map((entity) => ({
+  return entities.map((entity: any) => ({
     id: entity.id,
     file: {
       id: entity.file_id,
       filename: '',
       packageName: '',
+      subsystem: 0,
       status: 'draft',
       currentVersion: 1,
+      createdBy: { id: 0, username: '', email: '', role: 'developer', createdAt: '' },
       createdAt: '',
       updatedAt: '',
       locked: false,
+      lockedBy: null,
+      lockedAt: null,
     },
     fileVersion: entity.file_version_id
       ? {

@@ -5,9 +5,22 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../../middlewares/errorHandler';
 import { requireRole } from '../../middlewares/auth';
-import { getUsers, getUserById } from '../controllers/user.controller';
+import { getUsers, getUserById, getCurrentUser } from '../controllers/user.controller';
 
 const router = Router();
+
+/**
+ * GET /api/v1/users/me
+ * 获取当前登录用户信息
+ */
+router.get(
+  '/me',
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req.user as any).userId;
+    const result = await getCurrentUser(userId);
+    res.json(result);
+  })
+);
 
 /**
  * GET /api/v1/users

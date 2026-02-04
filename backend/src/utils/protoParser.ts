@@ -2,13 +2,14 @@
  * Proto 文件解析工具
  */
 
-import type { ProtoParseResult, ProtoMessage, ProtoEnum, ProtoService } from 'protohub-shared';
+import type { ProtoParseResult } from 'protohub-shared';
 
 /**
  * 解析 Proto 文件
  */
 export function parseProtoFile(content: string): ProtoParseResult {
   const result: ProtoParseResult = {
+    syntax: '',
     packageName: '',
     messages: [],
     enums: [],
@@ -17,130 +18,314 @@ export function parseProtoFile(content: string): ProtoParseResult {
   };
 
   const lines = content.split('\n');
+  let i = 0;
 
-  for (const line of lines) {
-    const trimmedLine = line.trim();
+  while (i < lines.length) {
+    const line = lines[i].trim();
+
+    // 跳过空行和注释
+    if (!line || line.startsWith('//') || line.startsWith('/*')) {
+      i++;
+      continue;
+    }
+
+    // 解析 syntax
+    if (line.startsWith('syntax')) {
+      const syntaxMatch = line.match(/syntax\s*=\s*"([^"]+)"/);
+      if (syntaxMatch) {
+        result.syntax = syntaxMatch[1];
+      }
+      i++;
+      continue;
+    }
 
     // 解析 package
-    const packageMatch = trimmedLine.match(/^package\s+([a-zA-Z0-9_.]+)\s*;/);
-    if (packageMatch) {
-      result.packageName = packageMatch[1];
+    if (line.startsWith('package')) {
+      const packageMatch = line.match(/package\s+([a-zA-Z0-9_.]+)/);
+      if (packageMatch) {
+        result.packageName = packageMatch[1].replace(/;$/, '');
+      }
+      i++;
+      continue;
     }
 
     // 解析 import
-    const importMatch = trimmedLine.match(/^import\s+(["'])(.*?)\1/);
-    if (importMatch) {
-      result.imports.push(importMatch[2]);
+    if (line.startsWith('import')) {
+      const importMatch = line.match(/import\s+["']([^"']+)["']/);
+      if (importMatch) {
+        result.imports.push(importMatch[1]);
+      }
+      i++;
+      continue;
     }
 
     // 解析 message
-    const messageMatch = trimmedLine.match(/^message\s+([A-Za-z0-9_]+)/);
-    if (messageMatch) {
-      result.messages.push({
-        name: messageMatch[1],
-        fields: [],
-      });
-    }
-
-    // 解析 message 字段
-    const fieldMatch = trimmedLine.match(/(optional|repeated)?\s+([a-zA-Z0-9_]+)\s+([a-z0-9_]+)\s*=\s*(\d+)/);
-    if (fieldMatch && result.messages.length > 0) {
-      const currentMessage = result.messages[result.messages.length - 1];
-      currentMessage.fields.push({
-        type: fieldMatch[2],
-        name: fieldMatch[3],
-        number: parseInt(fieldMatch[4], 10),
-        repeated: fieldMatch[1] === 'repeated',
-        optional: fieldMatch[1] === 'optional',
-      });
+    if (line.startsWith('message')) {
+      const messageMatch = line.match(/message\s+([a-zA-Z0-9_]+)/);
+      if (messageMatch) {
+        const { message, nextIndex } = parseMessageDefinition(messageMatch[1], lines, i);
+        result.messages.push(message);
+        i = nextIndex;
+        continue;
+      }
     }
 
     // 解析 enum
-    const enumMatch = trimmedLine.match(/^enum\s+([A-Za-z0-9_]+)/);
-    if (enumMatch) {
-      result.enums.push({
-        name: enumMatch[1],
-        values: [],
-      });
-    }
-
-    // 解析 enum 值
-    const enumValueMatch = trimmedLine.match(/([A-Z0-9_]+)\s*=\s*(\d+)/);
-    if (enumValueMatch && result.enums.length > 0 && trimmedLine.includes('=')) {
-      const currentEnum = result.enums[result.enums.length - 1];
-      currentEnum.values.push({
-        name: enumValueMatch[1],
-        number: parseInt(enumValueMatch[2], 10),
-      });
+    if (line.startsWith('enum')) {
+      const enumMatch = line.match(/enum\s+([a-zA-Z0-9_]+)/);
+      if (enumMatch) {
+        const { enumDef, nextIndex } = parseEnumDefinition(enumMatch[1], lines, i);
+        result.enums.push(enumDef);
+        i = nextIndex;
+        continue;
+      }
     }
 
     // 解析 service
-    const serviceMatch = trimmedLine.match(/^service\s+([A-Za-z0-9_]+)/);
-    if (serviceMatch) {
-      result.services.push({
-        name: serviceMatch[1],
-        methods: [],
-      });
+    if (line.startsWith('service')) {
+      const serviceMatch = line.match(/service\s+([a-zA-Z0-9_]+)/);
+      if (serviceMatch) {
+        const { service, nextIndex } = parseServiceDefinition(serviceMatch[1], lines, i);
+        result.services.push(service);
+        i = nextIndex;
+        continue;
+      }
     }
 
-    // 解析 rpc 方法
-    const rpcMatch = trimmedLine.match(/^rpc\s+([A-Za-z0-9_]+)\s*\(\s*([A-Za-z0-9_]+)\s*\)\s*returns\s*\(\s*([A-Za-z0-9_]+)\s*\)/);
-    if (rpcMatch && result.services.length > 0) {
-      const currentService = result.services[result.services.length - 1];
-      currentService.methods.push({
-        name: rpcMatch[1],
-        requestType: rpcMatch[2],
-        responseType: rpcMatch[3],
-        clientStreaming: trimmedLine.includes('stream'),
-        serverStreaming: trimmedLine.includes('stream'),
-      });
-    }
+    i++;
   }
 
   return result;
 }
 
 /**
- * 提取 import 依赖
+ * 解析消息定义
  */
-export function extractDependencies(content: string): string[] {
-  const parsed = parseProtoFile(content);
-  return parsed.imports;
+function parseMessageDefinition(name: string, lines: string[], startIndex: number): { message: any; nextIndex: number } {
+  const message = {
+    name,
+    fields: [],
+  };
+
+  let i = startIndex;
+  let braceCount = 0;
+
+  while (i < lines.length) {
+    const line = lines[i].trim();
+
+    // 跳过空行和注释
+    if (!line || line.startsWith('//') || line.startsWith('/*')) {
+      i++;
+      continue;
+    }
+
+    // 检查当前行是否包含 { (起始大括号可能在同一行)
+    if (line.includes('{')) {
+      braceCount++;
+      // 如果在同一行，跳到下一行
+      if (line === '{' || line.endsWith('{')) {
+        i++;
+        continue;
+      }
+    }
+
+    // 查找结束大括号
+    if (line === '}' || (line.includes('}') && braceCount > 0)) {
+      braceCount--;
+      if (braceCount === 0) {
+        return { message, nextIndex: i + 1 };
+      }
+      i++;
+      continue;
+    }
+
+    // 在消息体中，解析字段或嵌套类型
+    if (braceCount > 0) {
+      // 解析嵌套消息
+      if (line.startsWith('message')) {
+        const nestedMatch = line.match(/message\s+([a-zA-Z0-9_]+)/);
+        if (nestedMatch) {
+          const { message: nestedMessage, nextIndex } = parseMessageDefinition(nestedMatch[1], lines, i);
+          // 将嵌套消息作为字段添加
+          message.fields.push({
+            name: nestedMessage.name,
+            type: 'message',
+            nestedType: 'message',
+            messageDef: nestedMessage,
+          });
+          i = nextIndex;
+          continue;
+        }
+      }
+
+      // 解析字段: [optional|repeated] type name = number;
+      const fieldMatch = line.match(/^(optional|repeated)?\s*([a-zA-Z0-9_.]+)\s+([a-zA-Z0-9_]+)\s*=\s*(\d+)(?:\s*\[\s*default\s*=\s*([^\]]+)\s*\])?;/);
+      if (fieldMatch) {
+        message.fields.push({
+          name: fieldMatch[3],
+          type: fieldMatch[2],
+          number: parseInt(fieldMatch[4], 10),
+          repeated: fieldMatch[1] === 'repeated',
+          optional: fieldMatch[1] === 'optional',
+          defaultValue: fieldMatch[5],
+        });
+      }
+    }
+
+    i++;
+  }
+
+  return { message, nextIndex: i };
 }
 
 /**
- * 验证 Proto 文件语法
+ * 解析枚举定义
  */
-export function validateProtoFile(content: string): { valid: boolean; errors: string[] } {
-  const errors: string[] = [];
+function parseEnumDefinition(name: string, lines: string[], startIndex: number): { enumDef: any, nextIndex: number } {
+  const enumDef = {
+    name,
+    values: [],
+  };
 
-  const parsed = parseProtoFile(content);
+  let i = startIndex;
+  let braceCount = 0;
 
-  // 检查 package 声明
-  if (!parsed.packageName) {
-    errors.push('缺少 package 声明');
-  }
+  while (i < lines.length) {
+    const line = lines[i].trim();
 
-  // 检查 message 命名规范（PascalCase）
-  const messagePattern = /^[A-Z][a-zA-Z0-9]*$/;
-  for (const msg of parsed.messages) {
-    if (!messagePattern.test(msg.name)) {
-      errors.push(`消息名 "${msg.name}" 不符合 PascalCase 规范`);
+    // 跳过空行和注释
+    if (!line || line.startsWith('//') || line.startsWith('/*')) {
+      i++;
+      continue;
     }
+
+    // 检查当前行是否包含 { (起始大括号可能在同一行)
+    if (line.includes('{')) {
+      braceCount++;
+      // 如果在同一行，跳到下一行
+      if (line === '{' || line.endsWith('{')) {
+        i++;
+        continue;
+      }
+    }
+
+    // 查找结束大括号
+    if (line === '}' || (line.includes('}') && braceCount > 0)) {
+      braceCount--;
+      if (braceCount === 0) {
+        return { enumDef, nextIndex: i + 1 };
+      }
+      i++;
+      continue;
+    }
+
+    // 在枚举体中，解析枚举值: NAME = number;
+    if (braceCount > 0) {
+      const valueMatch = line.match(/^([A-Z0-9_]+)\s*=\s*(-?\d+);/);
+      if (valueMatch) {
+        enumDef.values.push({
+          name: valueMatch[1],
+          value: parseInt(valueMatch[2], 10),
+        });
+      }
+    }
+
+    i++;
   }
 
-  // 检查字段命名规范（snake_case）
-  const fieldPattern = /^[a-z][a-z0-9_]*$/;
-  for (const msg of parsed.messages) {
-    for (const field of msg.fields) {
-      if (!fieldPattern.test(field.name)) {
-        errors.push(`字段名 "${msg.name}.${field.name}" 不符合 snake_case 规范`);
+  return { enumDef, nextIndex: i };
+}
+
+/**
+ * 解析服务定义
+ */
+function parseServiceDefinition(name: string, lines: string[], startIndex: number): { service: any, nextIndex: number } {
+  const service = {
+    name,
+    methods: [],
+  };
+
+  let i = startIndex;
+  let braceCount = 0;
+
+  while (i < lines.length) {
+    const line = lines[i].trim();
+
+    // 跳过空行和注释
+    if (!line || line.startsWith('//') || line.startsWith('/*')) {
+      i++;
+      continue;
+    }
+
+    // 检查当前行是否包含 { (起始大括号可能在同一行)
+    if (line.includes('{')) {
+      braceCount++;
+      // 如果在同一行，跳到下一行
+      if (line === '{' || line.endsWith('{')) {
+        i++;
+        continue;
+      }
+    }
+
+    // 查找结束大括号
+    if (line === '}' || (line.includes('}') && braceCount > 0)) {
+      braceCount--;
+      if (braceCount === 0) {
+        return { service, nextIndex: i + 1 };
+      }
+      i++;
+      continue;
+    }
+
+    // 在服务体中，解析rpc方法
+    if (braceCount > 0 && line.startsWith('rpc')) {
+      const rpcMatch = line.match(/rpc\s+([a-zA-Z0-9_]+)\s*\(\s*([a-zA-Z0-9_]+)\s*\)\s*returns\s*\(\s*([a-zA-Z0-9_]+)\s*\);/);
+      if (rpcMatch) {
+        service.methods.push({
+          name: rpcMatch[1],
+          requestType: rpcMatch[2],
+          responseType: rpcMatch[3],
+        });
+      }
+    }
+
+    i++;
+  }
+
+  return { service, nextIndex: i };
+}
+
+/**
+ * 提取 Proto 文件中的依赖包名
+ */
+export function extractDependencies(content: string): string[] {
+  const deps: string[] = [];
+  const lines = content.split('\n');
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // 解析 import 语句
+    if (trimmed.startsWith('import')) {
+      const importMatch = trimmed.match(/import\s+["']([^"']+)["']/);
+      if (importMatch) {
+        // 从 import 路径中提取包名
+        // 例如: "common/types.proto" -> "common.types"
+        const importPath = importMatch[1];
+        const parts = importPath.split('/');
+        const fileName = parts[parts.length - 1];
+        // 去掉 .proto 扩展名
+        const packageName = fileName.replace(/\.proto$/, '');
+        // 替换路径分隔符为点
+        const fullPackageName = parts.slice(0, parts.length - 1).concat([packageName]).join('.');
+
+        // 验证包名格式
+        if (/^[a-zA-Z0-9_.]+$/.test(fullPackageName)) {
+          deps.push(fullPackageName);
+        }
       }
     }
   }
 
-  return {
-    valid: errors.length === 0,
-    errors,
-  };
+  return deps;
 }

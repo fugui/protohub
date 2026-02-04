@@ -3,12 +3,10 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Table, Button, Space, Tag, message, Modal, Input, Form, Select } from 'antd';
+import { Table, Button, Space, Tag, message, Modal, Input, Form } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
-import { getReviews, approveReview, rejectReview, getFileReviews } from '../services/reviewService';
+import { getReviews, approveReview, rejectReview } from '../services/reviewService';
 import type { Review } from 'protohub-shared';
-
-const { Column } = Table;
 
 export function ReviewPage() {
   const [reviews, setReviews] = useState<Review[]>([]);

@@ -5,7 +5,6 @@
 import { useState, useEffect } from 'react';
 import { Card, Select, Button, Space, message, Spin, Row, Col, List, Tag } from 'antd';
 import { ReloadOutlined, ApartmentOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
 import { DependencyGraph } from '../components/DependencyGraph';
 import { getDependencyGraph, getImpactAnalysis, getAllSubsystems } from '../services/dependencyService';
 import type { DependencyNode, DependencyEdge } from 'protohub-shared';
@@ -25,7 +24,6 @@ export function DependencyGraphPage() {
     affectedFiles: number;
     dependencyChain: string[];
   } | null>(null);
-  const navigate = useNavigate();
 
   const fetchSubsystems = async () => {
     try {
@@ -62,12 +60,6 @@ export function DependencyGraphPage() {
     } else {
       setImpactData(null);
     }
-  };
-
-  const handleFileFilter = (value: number) => {
-    setSelectedFileId(value);
-    fetchGraph({ fileId: value, subsystemId: selectedSubsystemId });
-    fetchImpactAnalysis(value);
   };
 
   const handleSubsystemFilter = (value: number) => {

@@ -70,9 +70,9 @@ export class ConflictError extends AppError {
  */
 export function errorHandler(
   err: Error | AppError,
-  req: Request,
+  _: Request,
   res: Response,
-  next: NextFunction
+  __: NextFunction
 ): void {
   // 记录错误日志
   console.error(`[${new Date().toISOString()}] Error:`, err);

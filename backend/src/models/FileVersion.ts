@@ -4,11 +4,16 @@
 
 import type { FileVersionEntity } from 'protohub-shared';
 import { BaseRepository } from '../config/database';
+import type Database from 'better-sqlite3';
 import { getDatabase } from '../config/db';
 
 export class FileVersionRepository extends BaseRepository<FileVersionEntity> {
   constructor() {
-    super(getDatabase(), 'file_versions', 'id');
+    super('file_versions', 'id');
+  }
+
+  protected getDb(): Database.Database {
+    return getDatabase();
   }
 
   /**
@@ -36,7 +41,7 @@ export class FileVersionRepository extends BaseRepository<FileVersionEntity> {
   /**
    * 创建版本记录
    */
-  create(data: Omit<FileVersionEntity, 'id' | 'modified_at'>): number {
+  create(data: Omit<FileVersionEntity, 'id'>): number {
     const result = this.insert({
       ...data,
       modified_at: new Date().toISOString(),

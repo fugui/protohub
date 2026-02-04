@@ -4,11 +4,16 @@
 
 import type { GitRepoEntity } from 'protohub-shared';
 import { BaseRepository } from '../config/database';
+import type Database from 'better-sqlite3';
 import { getDatabase } from '../config/db';
 
 export class GitRepoRepository extends BaseRepository<GitRepoEntity> {
   constructor() {
-    super(getDatabase(), 'git_repos', 'id');
+    super('git_repos', 'id');
+  }
+
+  protected getDb(): Database.Database {
+    return getDatabase();
   }
 
   /**
@@ -28,7 +33,7 @@ export class GitRepoRepository extends BaseRepository<GitRepoEntity> {
   /**
    * 创建仓库配置
    */
-  create(data: Omit<GitRepoEntity, 'id' | 'created_at'>): number {
+  create(data: Omit<GitRepoEntity, 'id'>): number {
     const result = this.insert({
       ...data,
       created_at: new Date().toISOString(),

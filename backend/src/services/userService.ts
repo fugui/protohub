@@ -9,8 +9,8 @@ import { NotFoundError } from '../middlewares/errorHandler';
 /**
  * 获取用户列表
  */
-export function getUsers(params: { page: number; pageSize: number }): PaginatedResponse<User> {
-  const result = userRepository.findPaginated({
+export async function getUsers(params: { page: number; pageSize: number }): Promise<PaginatedResponse<User>> {
+  const result = await userRepository.findPaginated({
     page: params.page,
     pageSize: params.pageSize,
   });
@@ -32,8 +32,8 @@ export function getUsers(params: { page: number; pageSize: number }): PaginatedR
 /**
  * 根据 ID 获取用户
  */
-export function getUserById(userId: number): User {
-  const user = userRepository.findById(userId);
+export async function getUserById(userId: number): Promise<User> {
+  const user = await userRepository.findById(userId);
   if (!user) {
     throw new NotFoundError('用户不存在');
   }
@@ -50,8 +50,8 @@ export function getUserById(userId: number): User {
 /**
  * 更新用户
  */
-export function updateUser(userId: number, data: Partial<User>): User {
-  const existing = userRepository.findById(userId);
+export async function updateUser(userId: number, data: Partial<User>): Promise<User> {
+  const existing = await userRepository.findById(userId);
   if (!existing) {
     throw new NotFoundError('用户不存在');
   }
@@ -66,9 +66,9 @@ export function updateUser(userId: number, data: Partial<User>): User {
     }
   }
 
-  userRepository.updateUser(userId, updateData);
+  await userRepository.updateUser(userId, updateData);
 
-  const updated = userRepository.findById(userId);
+  const updated = await userRepository.findById(userId);
   if (!updated) {
     throw new NotFoundError('用户不存在');
   }

@@ -14,7 +14,7 @@ const router = Router();
  */
 router.get(
   '/',
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (_req: Request, res: Response) => {
     const result = await getSubsystems();
     res.json(result);
   })
@@ -27,8 +27,7 @@ router.get(
 router.post(
   '/',
   asyncHandler(async (req: Request, res: Response) => {
-    const userId = req.user ? (req.user as any).userId : undefined;
-    const result = await createSubsystem(req.body, userId);
+    const result = await createSubsystem(req.body);
     res.status(201).json(result);
   })
 );

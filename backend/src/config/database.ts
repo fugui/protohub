@@ -3,7 +3,7 @@
  * 提供通用的 CRUD 操作
  */
 
-import type { Database, RunResult, Statement } from 'better-sqlite3';
+import type { Database, RunResult } from 'better-sqlite3';
 
 /**
  * 分页参数
@@ -26,18 +26,22 @@ export interface PaginatedResult<T> {
 /**
  * 数据库操作基类
  */
-export class BaseRepository<T = any> {
+export abstract class BaseRepository<T = any> {
   constructor(
-    protected db: Database,
     protected tableName: string,
     protected idColumn: string = 'id'
   ) {}
 
   /**
+   * 获取数据库连接 - 子类必须实现
+   */
+  protected abstract getDb(): Database;
+
+  /**
    * 查询所有记录
    */
   findAll(): T[] {
-    const stmt = this.db.prepare(`SELECT * FROM ${this.tableName}`);
+    const stmt = this.getDb().prepare(`SELECT * FROM ${this.tableName}`);
     return stmt.all() as T[];
   }
 
@@ -45,21 +49,21 @@ export class BaseRepository<T = any> {
    * 根据 ID 查询
    */
   findById(id: number): T | undefined {
-    const stmt = this.db.prepare(
+    const stmt = this.getDb().prepare(
       `SELECT * FROM ${this.tableName} WHERE ${this.idColumn} = ?`
     );
     return stmt.get(id) as T | undefined;
   }
 
   /**
-   * 根据条件查询
+   * 根据条件查询单条记录
    */
   findOne(conditions: Record<string, any>): T | undefined {
     const keys = Object.keys(conditions);
-    const values = Object.values(conditions);
-    const whereClause = keys.map((k) => `${k} = ?`).join(' AND ');
+    const values = keys.map(key => conditions[key as string]);
+    const whereClause = keys.map(key => `${key} = ?`).join(' AND ');
 
-    const stmt = this.db.prepare(
+    const stmt = this.getDb().prepare(
       `SELECT * FROM ${this.tableName} WHERE ${whereClause}`
     );
     return stmt.get(...values) as T | undefined;
@@ -70,10 +74,9 @@ export class BaseRepository<T = any> {
    */
   findMany(conditions: Record<string, any>): T[] {
     const keys = Object.keys(conditions);
-    const values = Object.values(conditions);
-    const whereClause = keys.map((k) => `${k} = ?`).join(' AND ');
-
-    const stmt = this.db.prepare(
+    const values = keys.map(key => conditions[key as string]);
+    const whereClause = keys.map(key => `${key} = ?`).join(' AND ');
+    const stmt = this.getDb().prepare(
       `SELECT * FROM ${this.tableName} WHERE ${whereClause}`
     );
     return stmt.all(...values) as T[];
@@ -92,17 +95,17 @@ export class BaseRepository<T = any> {
 
     // 构建查询条件
     const keys = Object.keys(conditions);
-    const values = Object.values(conditions);
-    const whereClause = keys.length > 0 ? `WHERE ${keys.map((k) => `${k} = ?`).join(' AND ')}` : '';
+    const values = keys.map(key => conditions[key as string]);
+    const whereClause = keys.length > 0 ? `WHERE ${keys.map(key => `${key} = ?`).join(' AND ')}` : '';
 
     // 查询总数
-    const countStmt = this.db.prepare(
+    const countStmt = this.getDb().prepare(
       `SELECT COUNT(*) as count FROM ${this.tableName} ${whereClause}`
     );
     const { count } = countStmt.get(...values) as { count: number };
 
     // 查询数据
-    const dataStmt = this.db.prepare(
+    const dataStmt = this.getDb().prepare(
       `SELECT * FROM ${this.tableName} ${whereClause} LIMIT ? OFFSET ?`
     );
     const data = dataStmt.all(...values, pageSize, offset) as T[];
@@ -118,12 +121,12 @@ export class BaseRepository<T = any> {
   /**
    * 插入记录
    */
-  insert(data: Omit<T, this['idColumn']>): RunResult {
+  insert(data: Omit<T, keyof T>): RunResult {
     const keys = Object.keys(data);
     const values = Object.values(data);
     const placeholders = keys.map(() => '?').join(', ');
 
-    const stmt = this.db.prepare(
+    const stmt = this.getDb().prepare(
       `INSERT INTO ${this.tableName} (${keys.join(', ')}) VALUES (${placeholders})`
     );
     return stmt.run(...values);
@@ -140,9 +143,8 @@ export class BaseRepository<T = any> {
       throw new Error('Update data is empty');
     }
 
-    const setClause = keys.map((k) => `${k} = ?`).join(', ');
-
-    const stmt = this.db.prepare(
+    const setClause = keys.map(key => `${key} = ?`).join(', ');
+    const stmt = this.getDb().prepare(
       `UPDATE ${this.tableName} SET ${setClause} WHERE ${this.idColumn} = ?`
     );
     return stmt.run(...values, id);
@@ -152,7 +154,7 @@ export class BaseRepository<T = any> {
    * 删除记录
    */
   delete(id: number): RunResult {
-    const stmt = this.db.prepare(
+    const stmt = this.getDb().prepare(
       `DELETE FROM ${this.tableName} WHERE ${this.idColumn} = ?`
     );
     return stmt.run(id);
@@ -163,10 +165,9 @@ export class BaseRepository<T = any> {
    */
   deleteMany(conditions: Record<string, any>): RunResult {
     const keys = Object.keys(conditions);
-    const values = Object.values(conditions);
-    const whereClause = keys.map((k) => `${k} = ?`).join(' AND ');
-
-    const stmt = this.db.prepare(
+    const values = keys.map(key => conditions[key as string]);
+    const whereClause = keys.map(key => `${key} = ?`).join(' AND ');
+    const stmt = this.getDb().prepare(
       `DELETE FROM ${this.tableName} WHERE ${whereClause}`
     );
     return stmt.run(...values);
@@ -177,10 +178,9 @@ export class BaseRepository<T = any> {
    */
   count(conditions: Record<string, any> = {}): number {
     const keys = Object.keys(conditions);
-    const values = Object.values(conditions);
-    const whereClause = keys.length > 0 ? `WHERE ${keys.map((k) => `${k} = ?`).join(' AND ')}` : '';
-
-    const stmt = this.db.prepare(
+    const values = keys.map(key => conditions[key as string]);
+    const whereClause = keys.length > 0 ? `WHERE ${keys.map(key => `${key} = ?`).join(' AND ')}` : '';
+    const stmt = this.getDb().prepare(
       `SELECT COUNT(*) as count FROM ${this.tableName} ${whereClause}`
     );
     const result = stmt.get(...values) as { count: number };
@@ -205,7 +205,6 @@ export function transaction<R>(
 ): R {
   const stmt = db.prepare('BEGIN TRANSACTION');
   stmt.run();
-
   try {
     const result = fn();
     const commitStmt = db.prepare('COMMIT');

@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Table, Space, Button, Tag, message, Descriptions, Spin, Breadcrumb, Progress, Empty, Alert } from 'antd';
-import { CheckCircleOutlined, CloseCircleOutlined, ExclamationCircleOutlined, ArrowLeftOutlined, DownloadOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, DownloadOutlined } from '@ant-design/icons';
 import type { CheckReport, Violation } from 'protohub-shared';
 
 export function CheckReportPage() {
@@ -181,8 +181,9 @@ ${report.violations?.map((v: Violation) => `
             <Space size="large" style={{ width: '100%' }}>
               <div style={{ flex: 1, textAlign: 'center' }}>
                 <Progress
-                  type={passed ? 'success' : 'exception'}
+                  type="circle"
                   percent={progressPercent}
+                  status={passed ? 'success' : 'exception'}
                   strokeColor={{
                     '0%': passed ? '#52c41a' : '#ff4d4f',
                     '100%': passed ? '#52c41a' : '#ff4d4f',

@@ -4,11 +4,16 @@
 
 import type { VocabularyTermEntity } from 'protohub-shared';
 import { BaseRepository } from '../config/database';
+import type Database from 'better-sqlite3';
 import { getDatabase } from '../config/db';
 
 export class VocabularyTermRepository extends BaseRepository<VocabularyTermEntity> {
   constructor() {
-    super(getDatabase(), 'vocabulary_terms', 'id');
+    super('vocabulary_terms', 'id');
+  }
+
+  protected getDb(): Database.Database {
+    return getDatabase();
   }
 
   /**
@@ -29,7 +34,7 @@ export class VocabularyTermRepository extends BaseRepository<VocabularyTermEntit
    * 搜索术语
    */
   search(keyword: string): VocabularyTermEntity[] {
-    const db = getDatabase();
+    const db = this.getDb();
     const pattern = `%${keyword}%`;
     return db
       .prepare(`
@@ -46,6 +51,13 @@ export class VocabularyTermRepository extends BaseRepository<VocabularyTermEntit
   getAllTerms(): string[] {
     const all = this.findAll();
     return all.map((t) => t.term);
+  }
+
+  /**
+   * 获取所有术语实体
+   */
+  getAllTermEntities(): VocabularyTermEntity[] {
+    return this.findAll();
   }
 
   /**

@@ -12,6 +12,7 @@ import {
   unlockFile as unlockProtoFile,
 } from '../../services/fileService';
 import { reviewRepository } from '../../models/Review';
+import { userRepository } from '../../models/User';
 import { SubmitReviewResponse } from 'protohub-shared';
 
 /**
@@ -45,8 +46,8 @@ export async function updateFile(fileId: number, data: any, req: any) {
 /**
  * 删除文件
  */
-export async function deleteFile(fileId: number, req: any) {
-  return await deleteProtoFile(fileId, req);
+export async function deleteFile(fileId: number, _req: any) {
+  return await deleteProtoFile(fileId);
 }
 
 /**
@@ -75,6 +76,7 @@ export async function submitReview(fileId: number, req: any): Promise<SubmitRevi
     file_id: fileId,
     file_version_id: null, // TODO: 获取当前版本 ID
     submitted_by: userId,
+    submitted_at: new Date().toISOString(),
     status: 'pending_review',
     review_comment: null,
   });
@@ -83,6 +85,56 @@ export async function submitReview(fileId: number, req: any): Promise<SubmitRevi
   await updateProtoFile(fileId, { content: file.content }, req);
   // 实际上文件状态是在 updateFile 中更新的
 
-  const review = reviewRepository.findById(reviewId);
+  const reviewEntity = reviewRepository.findById(reviewId);
+  if (!reviewEntity) {
+    throw new Error('审核记录创建失败');
+  }
+
+  const submittedBy = await userRepository.findById(reviewEntity.submitted_by);
+  const reviewedBy = reviewEntity.reviewed_by ? await userRepository.findById(reviewEntity.reviewed_by) : null;
+
+  const review = {
+    id: reviewEntity.id,
+    file: {
+      id: file.id,
+      filename: file.filename,
+      packageName: file.packageName,
+      subsystem: file.subsystem,
+      status: file.status,
+      currentVersion: file.currentVersion,
+      createdBy: submittedBy ? {
+        id: submittedBy.id,
+        username: submittedBy.username,
+        email: submittedBy.email,
+        role: submittedBy.role,
+        createdAt: submittedBy.created_at,
+      } : undefined,
+      createdAt: file.createdAt,
+      updatedAt: file.updatedAt,
+      locked: file.locked,
+      lockedBy: file.lockedBy || null,
+      lockedAt: file.lockedAt || null,
+    },
+    fileVersion: undefined,
+    submittedBy: submittedBy ? {
+      id: submittedBy.id,
+      username: submittedBy.username,
+      email: submittedBy.email,
+      role: submittedBy.role,
+      createdAt: submittedBy.created_at,
+    } : null,
+    submittedAt: reviewEntity.submitted_at,
+    reviewedBy: reviewedBy ? {
+      id: reviewedBy.id,
+      username: reviewedBy.username,
+      email: reviewedBy.email,
+      role: reviewedBy.role,
+      createdAt: reviewedBy.created_at,
+    } : null,
+    reviewedAt: reviewEntity.reviewed_at,
+    status: reviewEntity.status,
+    reviewComment: reviewEntity.review_comment,
+  };
+
   return { review };
 }

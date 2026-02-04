@@ -6,7 +6,7 @@ import express, { type Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { logger } from '../middlewares/logger';
+import { requestLogger } from '../middlewares/logger';
 import { errorHandler, notFoundHandler } from '../middlewares/errorHandler';
 
 /**
@@ -44,10 +44,10 @@ export function createApp(): Express {
   app.use('/api/', limiter);
 
   // 日志中间件
-  app.use(logger);
+  app.use(requestLogger);
 
   // 健康检查
-  app.get('/health', (req, res) => {
+  app.get('/health', (_, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 

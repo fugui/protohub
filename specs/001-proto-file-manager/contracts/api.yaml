@@ -820,7 +820,7 @@ components:
                 type: string
                 example: "文件已被其他用户锁定"
               lockedBy:
-                $ref: '#/schemas/User'
+                $ref: '#/components/schemas/User'
               lockedAt:
                 type: string
                 format: date-time

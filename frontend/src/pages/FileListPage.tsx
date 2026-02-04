@@ -19,7 +19,6 @@ export function FileListPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
   const setAuth = useAuthStore((state) => state.logout);
 
   const fetchFiles = async (pageNum = 1) => {

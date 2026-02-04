@@ -8,7 +8,7 @@ import { protoFileRepository } from '../models/ProtoFile';
 import { fileVersionRepository } from '../models/FileVersion';
 import { dependencyRepository } from '../models/Dependency';
 import { subsystemRepository } from '../models/Subsystem';
-import { FileStatus, ProtoFile, PaginatedResponse } from 'protohub-shared';
+import { ProtoFile, PaginatedResponse } from 'protohub-shared';
 import { NotFoundError, ConflictError, ValidationError } from '../middlewares/errorHandler';
 import { parseProtoFile, extractDependencies } from '../utils/protoParser';
 
@@ -77,8 +77,9 @@ export async function getFileById(fileId: number): Promise<ProtoFile & { content
     console.error(`读取文件失败: ${entity.file_path}`, error);
   }
 
+  const protoFile = mapEntityToProtoFile(entity);
   return {
-    ...mapEntityToProtoFile(entity),
+    ...protoFile,
     content,
   };
 }
@@ -137,6 +138,8 @@ export async function createFile(
     status: 'draft',
     current_version: 1,
     created_by: userId,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
     locked: 0,
   });
 
@@ -157,6 +160,7 @@ export async function createFile(
     content,
     file_path: filePath,
     modified_by: userId,
+    modified_at: new Date().toISOString(),
   });
 
   // 解析并存储依赖关系
@@ -169,6 +173,7 @@ export async function createFile(
         source_file_id: fileId,
         target_file_id: targetFile.id,
         dependency_type: 'import',
+        created_at: new Date().toISOString(),
       });
     }
   }
@@ -197,6 +202,11 @@ export async function updateFile(
     throw new ConflictError('文件已被其他用户锁定');
   }
 
+  // 验证 content 存在
+  if (!data.content || typeof data.content !== 'string' || data.content.trim() === '') {
+    throw new ValidationError('content 字段不能为空');
+  }
+
   // 解析 Proto 文件
   const parsed = parseProtoFile(data.content);
   if (!parsed.packageName) {
@@ -221,6 +231,7 @@ export async function updateFile(
     file_path: versionFilePath,
     change_note: data.changeNote || null,
     modified_by: userId,
+    modified_at: new Date().toISOString(),
   });
 
   // 更新文件记录
@@ -242,7 +253,7 @@ export async function updateFile(
 /**
  * 删除文件
  */
-export function deleteFile(fileId: number, req: any): void {
+export function deleteFile(fileId: number): void {
   const entity = protoFileRepository.findById(fileId);
   if (!entity) {
     throw new NotFoundError('文件不存在');
@@ -295,6 +306,7 @@ export function lockFile(fileId: number, req: any): any {
 
   return {
     message: '文件已锁定',
+    locked: true,
     lockedBy: (req.user as any).username,
     lockedAt: new Date().toISOString(),
   };
@@ -311,6 +323,14 @@ export function unlockFile(fileId: number, req: any): any {
     throw new NotFoundError('文件不存在');
   }
 
+  // 如果文件未锁定，直接返回成功
+  if (entity.locked === 0) {
+    return {
+      message: '文件已解锁',
+      locked: false,
+    };
+  }
+
   // 只有锁定者或管理员可以解锁
   if (entity.locked_by !== userId && (req.user as any).role !== 'admin') {
     throw new Error('无权限解锁此文件');
@@ -318,7 +338,10 @@ export function unlockFile(fileId: number, req: any): any {
 
   protoFileRepository.unlockFile(fileId);
 
-  return { message: '文件已解锁' };
+  return {
+    message: '文件已解锁',
+    locked: false,
+  };
 }
 
 /**
@@ -329,8 +352,10 @@ function mapEntityToProtoFile(entity: any): ProtoFile {
     id: entity.id,
     filename: entity.filename,
     packageName: entity.package_name,
+    subsystem: entity.subsystem_id,
     status: entity.status,
     currentVersion: entity.current_version,
+    createdBy: { id: entity.created_by, username: '', email: '', role: 'developer', createdAt: '' },
     createdAt: entity.created_at,
     updatedAt: entity.updated_at,
     locked: entity.locked === 1,

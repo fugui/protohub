@@ -17,7 +17,7 @@ interface LoadingProps {
  * 简单的加载指示器
  */
 export const Loading: React.FC<LoadingProps> = ({
-  spinning = true,
+  spinning: _spinning = true,
   size = 'default',
   tip = '加载中...',
   delay = 0,

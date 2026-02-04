@@ -10,11 +10,8 @@ import {
 /**
  * 获取依赖关系图
  */
-export async function getDependencyGraph(params: {
-  fileId?: number;
-  subsystemId?: number;
-}) {
-  return await getDepsGraph(params);
+export async function getDependencyGraph() {
+  return await getDepsGraph();
 }
 
 /**

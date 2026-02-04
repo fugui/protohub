@@ -4,7 +4,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { simpleGit, SimpleGit } from 'simple-git';
+import simpleGit, { SimpleGit } from 'simple-git';
 import { gitRepoRepository } from '../models/GitRepo';
 import { protoFileRepository } from '../models/ProtoFile';
 import { GitRepo, ProtoFile, GitImportResponse } from 'protohub-shared';
@@ -35,7 +35,6 @@ async function getGitInstance(repoId: number, repo: GitRepo): Promise<SimpleGit>
   if (!exists) {
     // 克隆仓库
     const git = simpleGit();
-    let auth = '';
 
     if (repo.username && repo.password) {
       // HTTPS 认证
@@ -85,7 +84,7 @@ export function getGitRepos(userId: number): GitRepo[] {
     id: entity.id,
     userId: entity.user_id,
     name: entity.name,
-    repoUrl: entity.repoUrl,
+    repoUrl: entity.repo_url,
     branch: entity.branch,
     lastSyncAt: entity.last_sync_at || undefined,
     createdAt: entity.created_at,
@@ -117,6 +116,7 @@ export async function createGitRepo(userId: number, data: any): Promise<GitRepo>
     username: data.username || null,
     password: data.password || null,
     ssh_key: data.sshKey || null,
+    created_at: new Date().toISOString(),
   });
 
   const entity = gitRepoRepository.findById(repoId);
@@ -128,7 +128,7 @@ export async function createGitRepo(userId: number, data: any): Promise<GitRepo>
     id: entity.id,
     userId: entity.user_id,
     name: entity.name,
-    repoUrl: entity.repoUrl,
+    repoUrl: entity.repo_url,
     branch: entity.branch,
     lastSyncAt: entity.last_sync_at || undefined,
     createdAt: entity.created_at,
@@ -155,11 +155,11 @@ export async function importFromGit(repoId: number, req: any): Promise<GitImport
     id: entity.id,
     userId: entity.user_id,
     name: entity.name,
-    repoUrl: entity.repoUrl,
+    repoUrl: entity.repo_url,
     branch: entity.branch,
     username: entity.username || undefined,
     password: entity.password || undefined,
-    sshKey: entity.sshKey || undefined,
+    sshKey: entity.ssh_key || undefined,
     lastSyncAt: entity.last_sync_at || undefined,
     createdAt: entity.created_at,
   };
@@ -214,6 +214,8 @@ export async function importFromGit(repoId: number, req: any): Promise<GitImport
         status: 'draft',
         current_version: 1,
         created_by: userId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         locked: 0,
       });
 
@@ -223,11 +225,15 @@ export async function importFromGit(repoId: number, req: any): Promise<GitImport
           id: fileEntity.id,
           filename: fileEntity.filename,
           packageName: fileEntity.package_name,
+          subsystem: fileEntity.subsystem_id,
           status: fileEntity.status,
           currentVersion: fileEntity.current_version,
+          createdBy: { id: fileEntity.created_by, username: '', email: '', role: 'developer', createdAt: '' },
           createdAt: fileEntity.created_at,
           updatedAt: fileEntity.updated_at,
           locked: fileEntity.locked === 1,
+          lockedBy: fileEntity.locked_by ? { id: fileEntity.locked_by, username: '', email: '', role: 'developer', createdAt: '' } : null,
+          lockedAt: fileEntity.locked_at,
         });
       }
     } catch (error: any) {

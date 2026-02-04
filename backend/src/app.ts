@@ -1,28 +1,36 @@
 /**
- * Express 应用入口
- * 配置所有路由和中间件
+ * Express app entry
+ * Configure all routes and middleware
  */
 
 import { createApp, registerErrorHandlers, startServer } from './config';
-import { authMiddleware, optionalAuth } from './middlewares/auth';
 import { registerRoutes } from './api/routes';
+import { initCheckRules } from './services/rulesInit';
 
 /**
- * 初始化应用
+ * Initialize app
+ * Use a factory function to ensure each call returns a new app instance
  */
 export function initApp() {
   const app = createApp();
 
-  // API v1 路由
+  // Initialize check rules
+  initCheckRules();
+
+  // API v1 routes
   app.use('/api/v1', registerRoutes());
 
-  // 注册错误处理
+  // Register error handlers
   registerErrorHandlers(app);
 
   return app;
 }
 
 /**
- * 启动服务器
+ * Start server
  */
 export { startServer };
+
+// Default export for test compatibility
+export default initApp();
+

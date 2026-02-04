@@ -4,11 +4,16 @@
 
 import type { ProtoFileEntity } from 'protohub-shared';
 import { BaseRepository, PaginatedResult } from '../config/database';
+import type Database from 'better-sqlite3';
 import { getDatabase } from '../config/db';
 
 export class ProtoFileRepository extends BaseRepository<ProtoFileEntity> {
   constructor() {
-    super(getDatabase(), 'proto_files', 'id');
+    super('proto_files', 'id');
+  }
+
+  protected getDb(): Database.Database {
+    return getDatabase();
   }
 
   /**
@@ -35,7 +40,7 @@ export class ProtoFileRepository extends BaseRepository<ProtoFileEntity> {
   /**
    * 创建文件
    */
-  create(data: Omit<ProtoFileEntity, 'id' | 'created_at' | 'updated_at'>): number {
+  create(data: Omit<ProtoFileEntity, 'id'>): number {
     const result = this.insert({
       ...data,
       created_at: new Date().toISOString(),
@@ -81,7 +86,7 @@ export class ProtoFileRepository extends BaseRepository<ProtoFileEntity> {
    * 更新文件版本
    */
   incrementVersion(id: number): void {
-    const db = getDatabase();
+    const db = this.getDb();
     db.prepare(`UPDATE proto_files SET current_version = current_version + 1 WHERE id = ?`).run(id);
   }
 
@@ -109,7 +114,7 @@ export class ProtoFileRepository extends BaseRepository<ProtoFileEntity> {
    * 释放超时的文件锁
    */
   releaseExpiredLocks(): void {
-    const db = getDatabase();
+    const db = this.getDb();
     const timeout = 30 * 60 * 1000; // 30 分钟
     const timeoutDate = new Date(Date.now() - timeout).toISOString();
 

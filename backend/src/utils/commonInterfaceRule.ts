@@ -2,7 +2,7 @@
  * 公共接口抽取器
  */
 
-import type { Violation, ViolationSeverity } from 'protohub-shared';
+import type { Violation } from 'protohub-shared';
 
 /**
  * 消息定义接口

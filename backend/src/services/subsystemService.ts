@@ -41,13 +41,13 @@ export function getSubsystemById(id: number): Subsystem | undefined {
  * 创建子系统
  */
 export function createSubsystem(
-  data: { name: string; description?: string; owner?: string },
-  userId?: number
+  data: { name: string; description?: string; owner?: string }
 ): Subsystem {
   const id = subsystemRepository.create({
     name: data.name,
     description: data.description || null,
     owner: data.owner || null,
+    created_at: new Date().toISOString(),
   });
 
   const entity = subsystemRepository.findById(id);

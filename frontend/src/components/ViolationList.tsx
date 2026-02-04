@@ -15,7 +15,6 @@ export interface ViolationListProps {
 
 export function ViolationList({ violations, onClose, title = '违规项列表' }: ViolationListProps) {
   const [filter, setFilter] = useState<'all' | 'error' | 'warning' | 'info'>('all');
-  const [selectedRow, setSelectedRow] = useState<string | null>(null);
 
   const filteredViolations = violations.filter((v) => {
     if (filter === 'all') return true;
@@ -73,7 +72,7 @@ export function ViolationList({ violations, onClose, title = '违规项列表' }
       dataIndex: 'fileLine',
       key: 'fileLine',
       width: 80,
-      render: (line: number) => (line ? \`第 \${line} 行\` : '-'),
+      render: (line: number) => (line ? `第 ${line} 行` : '-'),
     },
     {
       title: '违规说明',
@@ -231,7 +230,7 @@ export function ViolationList({ violations, onClose, title = '违规项列表' }
           />
         ) : (
           <Alert
-            message={filter === 'all' ? '没有发现违规项' : \`没有发现\${filter === 'error' ? '错误' : filter === 'warning' ? '警告' : '提示'}违规\`}
+            message={`没有发现${filter === 'all' ? '违规项' : `${filter === 'error' ? '错误' : filter === 'warning' ? '警告' : '提示'}违规项`}`}
             type="info"
             showIcon
           />

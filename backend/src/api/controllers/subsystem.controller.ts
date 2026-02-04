@@ -14,6 +14,6 @@ export async function getSubsystems() {
 /**
  * 创建子系统
  */
-export async function createSubsystem(data: { name: string; description?: string; owner?: string }, userId?: number) {
-  return await addSubsystem(data, userId);
+export async function createSubsystem(data: { name: string; description?: string; owner?: string }) {
+  return await addSubsystem(data);
 }

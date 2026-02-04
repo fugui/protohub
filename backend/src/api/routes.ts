@@ -3,7 +3,7 @@
  */
 
 import express, { type Router } from 'express';
-import { authMiddleware, optionalAuth, requireRole } from '../middlewares/auth';
+import { authMiddleware, optionalAuth } from '../middlewares/auth';
 import { authRoutes } from './routes/auth.routes';
 import { fileRoutes } from './routes/file.routes';
 import { versionRoutes } from './routes/version.routes';
@@ -39,10 +39,13 @@ export function registerRoutes(): Router {
 
   // 子系统路由
   router.use('/subsystems', optionalAuth, subsystemRoutes);
+
   // 检查路由
-  router.use('/files', authMiddleware, checkRoutes);
+  router.use('/checks', authMiddleware, checkRoutes);
+
   // 依赖关系路由
   router.use('/dependencies', authMiddleware, dependencyRoutes);
+
   // 词汇管理路由
   router.use('/vocabulary', authMiddleware, vocabularyRoutes);
 

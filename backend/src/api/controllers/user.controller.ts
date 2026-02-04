@@ -17,3 +17,10 @@ export async function getUsers(params: { page: number; pageSize: number }) {
 export async function getUserById(userId: number) {
   return await getUserInfo(userId);
 }
+
+/**
+ * 获取当前登录用户信息
+ */
+export async function getCurrentUser(userId: number) {
+  return await getUserInfo(userId);
+}

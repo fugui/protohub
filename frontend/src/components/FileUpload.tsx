@@ -3,8 +3,7 @@
  */
 
 import { useState } from 'react';
-import { Upload, message, Select, Button, Form, Space, Card, Modal } from 'antd';
-import type { UploadProps } from 'antd';
+import { Upload, message, Select, Button, Form, Modal } from 'antd';
 import { InboxOutlined } from '@ant-design/icons';
 import type { RcFile } from 'antd/es/upload/interface';
 
@@ -29,9 +28,9 @@ export function FileUpload({ onUploadSuccess, onCancel, visible = true }: FileUp
     { id: 3, name: 'product_service' },
   ];
 
-  const handleUpload = async (options: UploadProps) => {
+  const handleUpload = async (options: any) => {
     const { file } = options;
-    setFileList([file]);
+    setFileList([file as RcFile]);
   };
 
   const handleRemove = () => {
@@ -84,8 +83,9 @@ export function FileUpload({ onUploadSuccess, onCancel, visible = true }: FileUp
       title="上传 Proto 文件"
       onCancel={onCancel}
       footer={[
-        <Button onClick={onCancel}>取消</Button>,
+        <Button key="cancel" onClick={onCancel}>取消</Button>,
         <Button
+          key="submit"
           type="primary"
           onClick={handleSubmit}
           loading={uploading}
@@ -119,14 +119,14 @@ export function FileUpload({ onUploadSuccess, onCancel, visible = true }: FileUp
           <Dragger
             name="file"
             fileList={fileList}
-            customRequest={false}
-            beforeUpload={(file, fileList) => {
+            customRequest={() => {}}
+            beforeUpload={(file) => {
               const isProto = file.name.endsWith('.proto');
               if (!isProto) {
                 message.error('只能上传 .proto 格式的文件');
                 return Upload.LIST_IGNORE;
               }
-              return true;
+              return false;
             }}
             onRemove={handleRemove}
             onChange={handleUpload}

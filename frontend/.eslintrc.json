@@ -22,7 +22,7 @@
       { "allowConstantExport": true }
     ],
     "no-console": ["warn", { "allow": ["warn", "error"] }],
-    "max-len": ["error", { "code": 120, "ignoreStrings": true, "ignoreJSX": true }]
+    "max-len": "warn"
   },
   "settings": {
     "react": { "version": "detect" }

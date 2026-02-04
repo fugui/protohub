@@ -9,10 +9,7 @@ import type { DependencyNode, DependencyEdge } from 'protohub-shared';
 /**
  * 获取依赖关系图
  */
-export function getDependencyGraph(params: {
-  fileId?: number;
-  subsystemId?: number;
-}): { nodes: DependencyNode[]; edges: DependencyEdge[]; circularDependencies: string[][] } {
+export function getDependencyGraph(): { nodes: DependencyNode[]; edges: DependencyEdge[]; circularDependencies: string[][] } {
   const deps = dependencyRepository.findAll();
 
   // 构建节点和边
@@ -103,8 +100,6 @@ export function getImpactAnalysis(fileId: number): {
       if (file) {
         dependencyChain.push(file.filename);
       }
-    } else {
-      current = null;
     }
   }
 

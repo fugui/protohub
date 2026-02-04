@@ -13,7 +13,7 @@ import { ValidationError, ConflictError, NotFoundError } from '../middlewares/er
  */
 export async function login(data: LoginRequest): Promise<LoginResponse> {
   // 查找用户（支持用户名或邮箱登录）
-  const user = userRepository.findByUsername(data.username) || userRepository.findByEmail(data.username);
+  const user = await userRepository.findByUsername(data.username) || await userRepository.findByEmail(data.username);
 
   if (!user) {
     throw new ValidationError('用户名或密码错误');
@@ -46,13 +46,13 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
  */
 export async function register(data: RegisterRequest): Promise<User> {
   // 验证用户名是否已存在
-  const existingUser = userRepository.findByUsername(data.username);
+  const existingUser = await userRepository.findByUsername(data.username);
   if (existingUser) {
     throw new ConflictError('用户名已被使用');
   }
 
   // 验证邮箱是否已存在
-  const existingEmail = userRepository.findByEmail(data.email);
+  const existingEmail = await userRepository.findByEmail(data.email);
   if (existingEmail) {
     throw new ConflictError('邮箱已被注册');
   }
@@ -61,7 +61,7 @@ export async function register(data: RegisterRequest): Promise<User> {
   const passwordHash = await bcrypt.hash(data.password, 10);
 
   // 创建用户
-  const userId = userRepository.create({
+  const userId = await userRepository.create({
     username: data.username,
     email: data.email,
     password_hash: passwordHash,
@@ -69,7 +69,7 @@ export async function register(data: RegisterRequest): Promise<User> {
   });
 
   // 返回用户信息
-  const user = userRepository.findById(userId);
+  const user = await userRepository.findById(userId);
   if (!user) {
     throw new NotFoundError('用户创建失败');
   }
@@ -86,14 +86,14 @@ export async function register(data: RegisterRequest): Promise<User> {
 /**
  * 验证 Token 并获取用户信息
  */
-export function validateToken(token: string): User | null {
+export async function validateToken(token: string): Promise<User | null> {
   // 在 auth 中间件中已经验证了 token，这里只查询用户
   const decoded = require('../middlewares/auth').verifyToken(token);
   if (!decoded) {
     return null;
   }
 
-  const user = userRepository.findById(decoded.userId);
+  const user = await userRepository.findById(decoded.userId);
   if (!user) {
     return null;
   }

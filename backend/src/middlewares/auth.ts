@@ -98,7 +98,7 @@ export function requireRole(...allowedRoles: string[]) {
  * 可选的认证中间件
  * 不强制要求认证，但如果提供了 token 则验证
  */
-export function optionalAuth(req: Request, res: Response, next: NextFunction): void {
+export function optionalAuth(req: Request, _: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
 
   if (authHeader) {

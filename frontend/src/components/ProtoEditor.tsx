@@ -4,8 +4,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Input, Space, Card, Tag, message, Button } from 'antd';
-import { CheckOutlined, ClearOutlined, CopyOutlined, SaveOutlined } from '@ant-design/icons';
-import type { RcFile } from 'antd/es/upload/interface';
+import { ClearOutlined, CopyOutlined, SaveOutlined } from '@ant-design/icons';
 
 const { TextArea } = Input;
 

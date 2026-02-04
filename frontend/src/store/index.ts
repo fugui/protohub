@@ -16,9 +16,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: null,
   login: (user, token) =>
-    set({ user, token }, false, 'login'),
+    set({ user, token }),
   logout: () =>
-    set({ user: null, token: null }, false, 'logout'),
+    set({ user: null, token: null }),
 }));
 
 /**
@@ -31,5 +31,5 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
   isLoading: false,
-  setLoading: (loading) => set({ isLoading: loading }, false, 'setLoading'),
+  setLoading: (loading) => set({ isLoading: loading }),
 }));

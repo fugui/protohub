@@ -21,7 +21,6 @@ export function SubsystemPage() {
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedSubsystem, setSelectedSubsystem] = useState<Subsystem | null>(null);
   const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
   const setAuth = useAuthStore((state) => state.logout);
   const [form] = Form.useForm();
 
@@ -59,7 +58,7 @@ export function SubsystemPage() {
     setModalVisible(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (_id: number) => {
     try {
       // TODO: 调用删除 API
       message.success('删除成功');
@@ -71,7 +70,7 @@ export function SubsystemPage() {
 
   const handleModalOk = async () => {
     try {
-      const values = await form.validateFields();
+      await form.validateFields();
       if (editingSubsystem) {
         // TODO: 调用更新 API
         message.success('更新成功');
@@ -197,16 +196,6 @@ export function SubsystemPage() {
               placeholder="请输入子系统描述"
             />
           </Form.Item>
-          <Form.Item
-            label="状态"
-            name="status"
-            initialValue="active"
-          >
-            <select style={{ width: '100%', padding: '8px', border: '1px solid #d9d9d9', borderRadius: '4px' }}>
-              <option value="active">活跃</option>
-              <option value="inactive">停用</option>
-            </select>
-          </Form.Item>
         </Form>
       </Modal>
 
@@ -227,16 +216,13 @@ export function SubsystemPage() {
             <Descriptions.Item label="描述">
               {selectedSubsystem.description || '-'}
             </Descriptions.Item>
-            <Descriptions.Item label="状态">
-              {selectedSubsystem.status === 'active' ? '活跃' : '停用'}
-            </Descriptions.Item>
+            {selectedSubsystem.owner && (
+              <Descriptions.Item label="负责人">
+                {selectedSubsystem.owner}
+              </Descriptions.Item>
+            )}
             <Descriptions.Item label="创建时间">
-              {new Date(selectedSubsystem.created_at || '').toLocaleString('zh-CN')}
-            </Descriptions.Item>
-            <Descriptions.Item label="更新时间">
-              {selectedSubsystem.updated_at
-                ? new Date(selectedSubsystem.updated_at).toLocaleString('zh-CN')
-                : '-'}
+              {new Date(selectedSubsystem.createdAt).toLocaleString('zh-CN')}
             </Descriptions.Item>
           </Descriptions>
         )}

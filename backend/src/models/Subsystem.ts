@@ -4,11 +4,16 @@
 
 import type { SubsystemEntity } from 'protohub-shared';
 import { BaseRepository } from '../config/database';
+import type Database from 'better-sqlite3';
 import { getDatabase } from '../config/db';
 
 export class SubsystemRepository extends BaseRepository<SubsystemEntity> {
   constructor() {
-    super(getDatabase(), 'subsystems', 'id');
+    super('subsystems', 'id');
+  }
+
+  protected getDb(): Database.Database {
+    return getDatabase();
   }
 
   /**
@@ -21,19 +26,19 @@ export class SubsystemRepository extends BaseRepository<SubsystemEntity> {
   /**
    * 创建子系统
    */
-  create(data: Omit<SubsystemEntity, 'id' | 'created_at'>): number {
-    const result = this.insert({
+  async create(data: Omit<SubsystemEntity, 'id'>): Promise<number> {
+    const result = await this.insert({
       ...data,
       created_at: new Date().toISOString(),
     });
-    return Number(result.lastInsertRowid);
+    return result;
   }
 
   /**
    * 更新子系统
    */
-  updateSubsystem(id: number, data: Partial<Omit<SubsystemEntity, 'id' | 'created_at'>>): void {
-    this.update(id, data);
+  async updateSubsystem(id: number, data: Partial<Omit<SubsystemEntity, 'id' | 'created_at'>>): Promise<void> {
+    await this.update(id, data);
   }
 }
 

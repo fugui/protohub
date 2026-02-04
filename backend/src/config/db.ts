@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // 数据库文件路径
-const DB_DIR = path.join(process.cwd(), '../../storage/database');
+const DB_DIR = path.join(__dirname, '../../../storage/database');
 const DB_FILE = path.join(DB_DIR, 'protohub.db');
 
 // 确保数据库目录存在
@@ -52,6 +52,14 @@ export function closeDatabase(): void {
     db.close();
     db = null;
   }
+}
+
+/**
+ * 重置数据库连接（用于测试）
+ */
+export function resetDatabaseConnection(): void {
+  closeDatabase();
+  getDatabase();
 }
 
 /**
@@ -115,8 +123,6 @@ export function runMigrations(): void {
  */
 export function resetDatabase(): void {
   if (process.env.NODE_ENV !== 'production') {
-    const database = getDatabase();
-
     // 关闭当前连接
     closeDatabase();
 

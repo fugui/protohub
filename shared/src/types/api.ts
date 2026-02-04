@@ -53,10 +53,10 @@ export interface ProtoFile {
   id: number;
   filename: string;
   packageName: string;
-  subsystem?: Subsystem;
+  subsystem?: Subsystem | number | null | undefined;
   status: FileStatus;
   currentVersion: number;
-  createdBy: User;
+  createdBy: User | undefined;
   createdAt: string;
   updatedAt: string;
   locked: boolean;
@@ -91,7 +91,7 @@ export interface Review {
   id: number;
   file: ProtoFile;
   fileVersion?: FileVersion;
-  submittedBy: User;
+  submittedBy: User | null;
   submittedAt: string;
   reviewedBy?: User | null;
   reviewedAt?: string | null;

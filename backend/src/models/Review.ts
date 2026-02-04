@@ -4,11 +4,16 @@
 
 import type { ReviewEntity } from 'protohub-shared';
 import { BaseRepository } from '../config/database';
+import type Database from 'better-sqlite3';
 import { getDatabase } from '../config/db';
 
 export class ReviewRepository extends BaseRepository<ReviewEntity> {
   constructor() {
-    super(getDatabase(), 'reviews', 'id');
+    super('reviews', 'id');
+  }
+
+  protected getDb(): Database.Database {
+    return getDatabase();
   }
 
   /**
@@ -37,7 +42,7 @@ export class ReviewRepository extends BaseRepository<ReviewEntity> {
   /**
    * 创建审核记录
    */
-  create(data: Omit<ReviewEntity, 'id' | 'submitted_at'>): number {
+  create(data: Omit<ReviewEntity, 'id'>): number {
     const result = this.insert({
       ...data,
       submitted_at: new Date().toISOString(),

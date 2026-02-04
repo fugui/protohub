@@ -177,29 +177,32 @@ description: "Proto 文件管理系统任务列表"
 - [ ] T068 [P] [US3] Unit test for vocabulary check in backend/tests/unit/vocabularyRule.test.ts
 - [ ] T069 [P] [US3] Unit test for common interface extraction in backend/tests/unit/commonInterfaceRule.test.ts
 - [ ] T070 [P] [US3] Integration test for complete check workflow in backend/tests/integration/checkEngine.test.ts
+- [ ] T071 [P] [US3] Unit test for fileService in backend/tests/unit/fileService.test.ts
+- [ ] T072 [P] [US3] Unit test for reviewService in backend/tests/unit/reviewService.test.ts
+- [ ] T073 [P] [US3] Unit test for gitService in backend/tests/unit/gitService.test.ts
+- [ ] T074 [P] [US3] Unit test for dependencyService in backend/tests/unit/dependencyService.test.ts
+- [ ] T075 [P] [US3] Unit test for consistencyService in backend/tests/unit/consistencyService.test.ts
 
 ### Implementation for User Story 3
 
 **Check Engine**:
-- [X] T071 [US3] 创建检查规则引擎（backend/src/services/checkEngine.ts - 规则注册、执行调度）
-- [X] T072 [US3] 创建命名规范检查器（backend/src/utils/namingRules.ts - 文件名、包名、消息、字段、服务）
-- [X] T073 [US3] 创建词汇规范检查器（backend/src/utils/vocabularyRule.ts - 领域术语字典验证）
-- [X] T074 [US3] 创建公共接口抽取器（backend/src/utils/commonInterfaceRule.ts - 重复消息检测）
-- [X] T075 [US3] 创建检查报告生成服务（backend/src/services/checkReportService.ts）
-- [X] T076 [US3] 创建违规项数据模型（已在 T016 中创建 CheckReport.ts 和 Violation.ts）
-- [X] T077 [US3] 创建检查 API 路由（backend/src/api/routes.ts - /files/{id}/check）
+- [X] T076 [US3] 创建检查规则引擎（backend/src/services/checkEngine.ts - 规则注册、执行调度）
+- [X] T077 [US3] 创建命名规范检查器（backend/src/utils/namingRules.ts - 文件名、包名、消息、字段、服务）
+- [X] T078 [US3] 创建词汇规范检查器（backend/src/utils/vocabularyRule.ts - 领域术语字典验证）
+- [X] T079 [US3] 创建公共接口抽取器（backend/src/utils/commonInterfaceRule.ts - 重复消息检测）
+- [X] T080 [US3] 创建检查报告生成服务（backend/src/services/checkReportService.ts）
+- [X] T081 [US3] 创建违规项数据模型（已在 T016 中创建 CheckReport.ts 和 Violation.ts）
+- [X] T082 [US3] 创建检查 API 路由（backend/src/api/routes.ts - /files/{id}/check）
 
 **Vocabulary Management**:
-- [X] T078 [US3] 创建词汇管理服务（backend/src/services/vocabularyService.ts - 管理员增删改术语）
-- [X] T079 [US3] 创建词汇 API 路由（backend/src/api/routes.ts - /vocabulary/terms GET/POST/PUT/DELETE）
-- [X] T080 [US3] 创建词汇管理服务（backend/src/api/controllers/vocabulary.controller.ts）
-- [X] T081 [US3] 创建词汇 API 路由（backend/src/api/routes/vocabulary.routes.ts）
-- [X] T082 [US3] 创建词汇管理服务（backend/src/services/vocabularyService.ts）
-- [X] T083 [US3] 创建词汇 API 路由（backend/src/api/routes/vocabulary.routes.ts）
-- [ ] T080 [US3] 创建检查报告页面（frontend/src/pages/CheckReportPage.tsx）
-- [ ] T081 [US3] 创建违规项列表组件（frontend/src/components/ViolationList.tsx - 违规详情和修改建议）
-- [ ] T082 [US3] 创建词汇管理页面（frontend/src/pages/VocabularyPage.tsx）
-- [ ] T083 [US3] 创建检查 API 服务层（frontend/src/services/checkService.ts）
+- [X] T083 [US3] 创建词汇管理服务（backend/src/services/vocabularyService.ts - 管理员增删改术语）
+- [X] T084 [US3] 创建词汇 API 路由（backend/src/api/routes.ts - /vocabulary/terms GET/POST/PUT/DELETE）
+- [X] T085 [US3] 创建词汇管理控制器（backend/src/api/controllers/vocabulary.controller.ts）
+- [X] T086 [US3] 创建词汇 API 路由（backend/src/api/routes/vocabulary.routes.ts）
+- [ ] T087 [US3] 创建检查报告页面（frontend/src/pages/CheckReportPage.tsx）
+- [ ] T088 [US3] 创建违规项列表组件（frontend/src/components/ViolationList.tsx - 违规详情和修改建议）
+- [ ] T089 [US3] 创建词汇管理页面（frontend/src/pages/VocabularyPage.tsx）
+- [ ] T090 [US3] 创建检查 API 服务层（frontend/src/services/checkService.ts）
 
 **Checkpoint**: User Story 3 完成，自动检查功能可用，可独立测试和部署 ✅
 
@@ -215,23 +218,23 @@ description: "Proto 文件管理系统任务列表"
 
 > **NOTE: 编写这些测试 FIRST，确保它们 FAIL 在实现之前**
 
-- [ ] T084 [P] [US4] Contract test for /dependencies/graph GET endpoint in backend/tests/integration/dependencies.test.ts
-- [ ] T085 [P] [US4] Contract test for /files/{id}/impact-analysis GET endpoint in backend/tests/integration/dependencies.test.ts
-- [ ] T086 [P] [US4] Integration test for dependency graph generation in backend/tests/integration/dependencies.test.ts
+- [ ] T091 [P] [US4] Contract test for /dependencies/graph GET endpoint in backend/tests/integration/dependencies.test.ts
+- [ ] T092 [P] [US4] Contract test for /files/{id}/impact-analysis GET endpoint in backend/tests/integration/dependencies.test.ts
+- [ ] T093 [P] [US4] Integration test for dependency graph generation in backend/tests/integration/dependencies.test.ts
 
 ### Implementation for User Story 4
 
 **Dependency Analysis Engine**:
-- [X] T087 [US4] 创建依赖分析服务（backend/src/services/dependencyService.ts - 依赖解析、循环检测）
-- [X] T088 [US4] 创建子系统服务（backend/src/services/subsystemService.ts - 子系统 CRUD）
-- [X] T089 [US4] 创建影响范围分析服务（backend/src/services/dependencyService.ts - 变更影响分析）
-- [X] T090 [US4] 创建依赖 API 路由（backend/src/api/routes.ts - /dependencies/graph、/files/{id}/impact-analysis）
+- [X] T094 [US4] 创建依赖分析服务（backend/src/services/dependencyService.ts - 依赖解析、循环检测）
+- [X] T095 [US4] 创建子系统服务（backend/src/services/subsystemService.ts - 子系统 CRUD）
+- [X] T096 [US4] 创建影响范围分析服务（backend/src/services/dependencyService.ts - 变更影响分析）
+- [X] T097 [US4] 创建依赖 API 路由（backend/src/api/routes.ts - /dependencies/graph、/files/{id}/impact-analysis）
 
 **Frontend - Dependency Graph UI**:
-- [X] T091 [US4] 创建依赖关系图页面（frontend/src/pages/DependencyGraphPage.tsx）
-- [X] T092 [US4] 创建 ECharts 图表组件（frontend/src/components/DependencyGraph.tsx - 节点、边、循环依赖高亮）
-- [X] T093 [US4] 创建子系统管理页面（frontend/src/pages/SubsystemPage.tsx）
-- [X] T094 [US4] 创建依赖 API 服务层（frontend/src/services/dependencyService.ts）
+- [X] T098 [US4] 创建依赖关系图页面（frontend/src/pages/DependencyGraphPage.tsx）
+- [X] T099 [US4] 创建 ECharts 图表组件（frontend/src/components/DependencyGraph.tsx - 节点、边、循环依赖高亮）
+- [X] T100 [US4] 创建子系统管理页面（frontend/src/pages/SubsystemPage.tsx）
+- [X] T101 [US4] 创建依赖 API 服务层（frontend/src/services/dependencyService.ts）
 
 **Checkpoint**: User Story 4 完成，依赖关系可视化功能可用，可独立测试和部署 ✅
 
@@ -241,17 +244,17 @@ description: "Proto 文件管理系统任务列表"
 
 **Purpose**: 跨故事改进和优化，提升用户体验和代码质量。
 
-- [X] T095 [P] 实现搜索功能（backend/src/api/routes.ts - /files GET 搜索参数）
-- [X] T096 [P] 实现分页查询（所有列表 API）
-- [X] T097 [P] 前端搜索组件（frontend/src/components/SearchBar.tsx）
-- [X] T098 [P] 创建前端登录页面（frontend/src/pages/LoginPage.tsx）
-- [X] T099 [P] 创建前端首页/仪表板（frontend/src/pages/DashboardPage.tsx）
-- [X] T100 [P] 前端加载状态和错误处理（frontend/src/components/Loading.tsx、frontend/src/components/ErrorMessage.tsx）
-- [ ] T101 [P] 后端日志记录优化（记录关键操作、错误日志）
-- [ ] T102 [P] 后端性能优化（添加数据库索引、查询缓存）
-- [ ] T103 [P] 前端性能优化（懒加载、虚拟滚动）
-- [ ] T104 [P] 运行 quickstart.md 中的所有验证步骤
-- [ ] T105 [P] 生成 OpenAPI 3.0 文档（从 contracts/api.yaml）
+- [X] T102 [P] 实现搜索功能（backend/src/api/routes.ts - /files GET 搜索参数）
+- [X] T103 [P] 实现分页查询（所有列表 API）
+- [X] T104 [P] 前端搜索组件（frontend/src/components/SearchBar.tsx）
+- [X] T105 [P] 创建前端登录页面（frontend/src/pages/LoginPage.tsx）
+- [X] T106 [P] 创建前端首页/仪表板（frontend/src/pages/DashboardPage.tsx）
+- [X] T107 [P] 前端加载状态和错误处理（frontend/src/components/Loading.tsx、frontend/src/components/ErrorMessage.tsx）
+- [ ] T108 [P] 后端日志记录优化（记录关键操作、错误日志）
+- [ ] T109 [P] 后端性能优化（添加数据库索引、查询缓存）
+- [ ] T110 [P] 前端性能优化（懒加载、虚拟滚动）
+- [ ] T111 [P] 运行 quickstart.md 中的所有验证步骤
+- [ ] T112 [P] 生成 OpenAPI 3.0 文档（从 contracts/api.yaml）
 
 **Checkpoint**: Phase 7 完成 ✅
 

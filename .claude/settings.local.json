@@ -22,7 +22,24 @@
       "Bash(curl:*)",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(test:*)",
+      "Bash(/speckit.implement:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx vitest run:*)",
+      "Bash(npm test:*)",
+      "Bash(grep -E5 \"Error:\")",
+      "Bash(cd:*)",
+      "Bash(Select-Object -First 25 \")",
+      "Bash(npm run test:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm test)",
+      "Bash(.pspecify/scripts/powershell/check-prerequisites.ps1:*)",
+      "Bash(powershell.exe -File:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm run dev)",
+      "Bash(npx tsx watch:*)"
     ]
   }
 }

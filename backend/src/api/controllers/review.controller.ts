@@ -4,6 +4,7 @@
 
 import { reviewRepository } from '../../models/Review';
 import { protoFileRepository } from '../../models/ProtoFile';
+import { NotFoundError } from '../../middlewares/errorHandler';
 
 /**
  * 获取待审核列表
@@ -11,7 +12,7 @@ import { protoFileRepository } from '../../models/ProtoFile';
 export async function getReviews(params: { page: number; pageSize: number }) {
   const result = reviewRepository.findPendingReviews(params);
   return {
-    reviews: result.data.map((review) => ({
+    reviews: result.data.map((review: any) => ({
       id: review.id,
       file: { id: review.file_id, filename: '' }, // TODO: 添加更多字段
       submittedBy: { id: review.submitted_by, username: '', email: '', role: 'developer', createdAt: '' },
@@ -29,15 +30,16 @@ export async function getReviews(params: { page: number; pageSize: number }) {
  * 批准审核
  */
 export async function approveReview(reviewId: number, comment?: string, req?: any) {
-  const userId = req ? (req as any).userId : 1;
+  const review = reviewRepository.findById(reviewId);
+  if (!review) {
+    throw new NotFoundError('审核记录不存在');
+  }
 
+  const userId = req ? (req as any).userId : 1;
   reviewRepository.approve(reviewId, userId, comment);
 
   // 更新文件状态
-  const review = reviewRepository.findById(reviewId);
-  if (review) {
-    protoFileRepository.updateFile(review.file_id, { status: 'approved' });
-  }
+  protoFileRepository.updateFile(review.file_id, { status: 'approved' });
 
   return reviewRepository.findById(reviewId);
 }
@@ -46,15 +48,16 @@ export async function approveReview(reviewId: number, comment?: string, req?: an
  * 拒绝审核
  */
 export async function rejectReview(reviewId: number, comment: string, req?: any) {
-  const userId = req ? (req as any).userId : 1;
+  const review = reviewRepository.findById(reviewId);
+  if (!review) {
+    throw new NotFoundError('审核记录不存在');
+  }
 
+  const userId = req ? (req as any).userId : 1;
   reviewRepository.reject(reviewId, userId, comment);
 
   // 更新文件状态
-  const review = reviewRepository.findById(reviewId);
-  if (review) {
-    protoFileRepository.updateFile(review.file_id, { status: 'rejected' });
-  }
+  protoFileRepository.updateFile(review.file_id, { status: 'rejected' });
 
   return reviewRepository.findById(reviewId);
 }

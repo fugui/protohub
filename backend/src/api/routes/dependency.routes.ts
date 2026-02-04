@@ -14,12 +14,8 @@ const router = Router();
  */
 router.get(
   '/graph',
-  asyncHandler(async (req: Request, res: Response) => {
-    const params = {
-      fileId: req.query.fileId ? parseInt(req.query.fileId as string) : undefined,
-      subsystemId: req.query.subsystemId ? parseInt(req.query.subsystemId as string) : undefined,
-    };
-    const result = await getDependencyGraph(params);
+  asyncHandler(async (_req: Request, res: Response) => {
+    const result = await getDependencyGraph();
     res.json(result);
   })
 );

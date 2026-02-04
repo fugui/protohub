@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { Table, Button, Space, message, Modal, Form, Input, Select, Tag, Card, Popconfirm, Breadcrumb } from 'antd';
-import { PlusOutlined, DeleteOutlined, EditOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { getVocabularyTerms, createTerm, updateTerm, deleteTerm } from '../services/vocabularyService';
 import { useAuthStore } from '../store';
@@ -102,6 +102,14 @@ export function VocabularyPage() {
     setModalVisible(false);
     setEditingTerm(null);
     form.resetFields();
+  };
+
+  const handleFormSubmit = async (values: { term: string; description?: string; category?: string }) => {
+    if (editingTerm) {
+      await handleUpdate(values);
+    } else {
+      await handleCreate(values);
+    }
   };
 
   const getCategoryTag = (category: string) => {
@@ -217,11 +225,13 @@ export function VocabularyPage() {
             }}
             scroll={{ y: 500 }}
             rowClassName={() => 'cursor-pointer'}
-            onRow={(record) => {
-              if (isAdmin) {
-                handleEdit(record);
-              }
-            }}
+            onRow={(record) => ({
+              onClick: () => {
+                if (isAdmin) {
+                  handleEdit(record);
+                }
+              },
+            })}
           />
 
           {/* 添加/编辑词汇弹窗 */}
@@ -230,14 +240,14 @@ export function VocabularyPage() {
             title={editingTerm ? '编辑术语' : '添加术语'}
             onCancel={handleCancel}
             footer={[
-              <Button onClick={handleCancel}>取消</Button>,
-              <Button type="primary" onClick={() => form.submit()}>
+              <Button key="cancel" onClick={handleCancel}>取消</Button>,
+              <Button key="submit" type="primary" htmlType="submit">
                 {editingTerm ? '更新' : '创建'}
               </Button>,
             ]}
             width={600}
           >
-            <Form form={form} layout="vertical" initialValues={editingTerm || undefined}>
+            <Form form={form} layout="vertical" initialValues={editingTerm || undefined} onFinish={handleFormSubmit}>
               <Form.Item
                 label="术语"
                 name="term"
