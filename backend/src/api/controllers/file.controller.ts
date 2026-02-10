@@ -12,6 +12,7 @@ import {
   unlockFile as unlockProtoFile,
 } from '../../services/fileService';
 import { reviewRepository } from '../../models/Review';
+import { protoFileRepository } from '../../models/ProtoFile';
 import { userRepository } from '../../models/User';
 import { SubmitReviewResponse } from 'protohub-shared';
 
@@ -82,7 +83,7 @@ export async function submitReview(fileId: number, req: any): Promise<SubmitRevi
   });
 
   // 更新文件状态为待审核
-  await updateProtoFile(fileId, { content: file.content }, req);
+  protoFileRepository.updateFile(fileId, { status: 'pending_review' });
   // 实际上文件状态是在 updateFile 中更新的
 
   const reviewEntity = reviewRepository.findById(reviewId);

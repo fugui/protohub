@@ -40,6 +40,32 @@ export class ReviewRepository extends BaseRepository<ReviewEntity> {
   }
 
   /**
+   * 查询审核历史 (已批准/已拒绝)
+   */
+  findHistory(params: any = {}): any {
+    const page = params.page || 1;
+    const pageSize = params.pageSize || 20;
+    const offset = (page - 1) * pageSize;
+
+    const countStmt = this.getDb().prepare(
+      `SELECT COUNT(*) as count FROM ${this.tableName} WHERE status IN ('approved', 'rejected')`
+    );
+    const { count } = countStmt.get() as { count: number };
+
+    const dataStmt = this.getDb().prepare(
+      `SELECT * FROM ${this.tableName} WHERE status IN ('approved', 'rejected') ORDER BY reviewed_at DESC LIMIT ? OFFSET ?`
+    );
+    const data = dataStmt.all(pageSize, offset);
+
+    return {
+      data,
+      total: count,
+      page,
+      pageSize,
+    };
+  }
+
+  /**
    * 创建审核记录
    */
   create(data: Omit<ReviewEntity, 'id'>): number {

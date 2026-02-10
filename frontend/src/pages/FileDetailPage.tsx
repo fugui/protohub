@@ -129,7 +129,8 @@ export function FileDetailPage() {
       message.success('文件创建成功');
       navigate(`/files/${newFile.id}`);
     } catch (error: any) {
-      message.error(error.message || '创建文件失败');
+      const errorMsg = error.response?.data?.error || error.message || '创建文件失败';
+      message.error(errorMsg);
       console.error(error);
     } finally {
       setCreating(false);

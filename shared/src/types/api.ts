@@ -133,12 +133,30 @@ export interface DependencyNode {
 }
 
 /**
+ * 文件依赖详情
+ */
+export interface FileDependencyDetail {
+  id: number;
+  sourceFile?: {
+    id: number;
+    filename: string;
+    packageName: string;
+  };
+  targetFile: {
+    id: number;
+    filename: string;
+    packageName: string;
+  };
+}
+
+/**
  * 依赖边
  */
 export interface DependencyEdge {
   source: string;
   target: string;
   type: 'import';
+  fileDependencies?: FileDependencyDetail[]; // 关联的文件依赖列表
 }
 
 /**

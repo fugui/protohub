@@ -30,7 +30,7 @@ export abstract class BaseRepository<T = any> {
   constructor(
     protected tableName: string,
     protected idColumn: string = 'id'
-  ) {}
+  ) { }
 
   /**
    * 获取数据库连接 - 子类必须实现
@@ -105,9 +105,10 @@ export abstract class BaseRepository<T = any> {
     const { count } = countStmt.get(...values) as { count: number };
 
     // 查询数据
-    const dataStmt = this.getDb().prepare(
-      `SELECT * FROM ${this.tableName} ${whereClause} LIMIT ? OFFSET ?`
-    );
+    const sql = `SELECT * FROM ${this.tableName} ${whereClause} LIMIT ? OFFSET ?`;
+    console.log(`[BaseRepository] Executing SQL: ${sql} with values:`, [...values, pageSize, offset]);
+
+    const dataStmt = this.getDb().prepare(sql);
     const data = dataStmt.all(...values, pageSize, offset) as T[];
 
     return {

@@ -3,20 +3,27 @@
  */
 
 import { vocabularyTermRepository } from '../models/VocabularyTerm';
-import type { VocabularyTerm } from 'protohub-shared';
+import type { VocabularyTerm, PaginatedResponse } from 'protohub-shared';
 
 /**
  * 获取所有术语
  */
-export function getAllTerms(): VocabularyTerm[] {
+export function getAllTerms(): PaginatedResponse<VocabularyTerm> {
   const entities = vocabularyTermRepository.getAllTermEntities();
-  return entities.map((entity) => ({
+  const data = entities.map((entity) => ({
     id: entity.id,
     term: entity.term,
     description: entity.description || undefined,
     category: entity.category || undefined,
     createdAt: entity.created_at,
   }));
+
+  return {
+    data,
+    total: data.length,
+    page: 1,
+    pageSize: data.length,
+  };
 }
 
 /**

@@ -32,6 +32,7 @@ api.interceptors.request.use((config) => {
 export async function getReviews(params: {
   page?: number;
   pageSize?: number;
+  status?: string;
 }): Promise<PaginatedResponse<Review>> {
   const response = await api.get('/reviews', { params });
   return response.data;

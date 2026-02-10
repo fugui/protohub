@@ -4,7 +4,7 @@
 
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../../middlewares/errorHandler';
-import { getSubsystems, createSubsystem } from '../controllers/subsystem.controller';
+import { getSubsystems, getSubsystemById, createSubsystem } from '../controllers/subsystem.controller';
 
 const router = Router();
 
@@ -16,6 +16,23 @@ router.get(
   '/',
   asyncHandler(async (_req: Request, res: Response) => {
     const result = await getSubsystems();
+    res.json(result);
+  })
+);
+
+/**
+ * GET /api/v1/subsystems/:id
+ * 根据ID获取子系统
+ */
+router.get(
+  '/:id',
+  asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const result = await getSubsystemById(id);
+    if (!result) {
+      res.status(404).json({ error: '子系统不存在' });
+      return;
+    }
     res.json(result);
   })
 );

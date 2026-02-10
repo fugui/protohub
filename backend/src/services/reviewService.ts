@@ -4,64 +4,93 @@
 
 import { reviewRepository } from '../models/Review';
 import { protoFileRepository } from '../models/ProtoFile';
+import { userRepository } from '../models/User';
 import type { Review } from 'protohub-shared';
 import { NotFoundError, ValidationError } from '../middlewares/errorHandler';
 
 /**
  * 获取待审核列表
  */
-export function getPendingReviews(params: { page: number; pageSize: number }): {
+/**
+ * 获取审核列表
+ */
+export async function getReviews(params: { page: number; pageSize: number; status?: string }): Promise<{
   data: Review[];
   total: number;
-} {
-  const result = reviewRepository.findPendingReviews(params);
+}> {
+  let result;
+  if (params.status === 'history') {
+    result = reviewRepository.findHistory({ page: params.page, pageSize: params.pageSize });
+  } else if (params.status && params.status !== 'all') {
+    result = reviewRepository.findByStatus(params.status, { page: params.page, pageSize: params.pageSize });
+  } else {
+    // If status is 'all' or undefined
+    result = reviewRepository.findPaginated({ page: params.page, pageSize: params.pageSize }, {});
+  }
 
-  const reviews = result.data.map((entity: any) => ({
-    id: entity.id,
-    file: {
+  const reviews = await Promise.all(result.data.map(async (entity: any) => {
+    const file = protoFileRepository.findById(entity.file_id);
+    const submittedBy = await userRepository.findById(entity.submitted_by);
+    const reviewedBy = entity.reviewed_by ? await userRepository.findById(entity.reviewed_by) : null;
+
+    // 如果文件已被删除，可能需要处理（这里暂且容错返回空对象或忽略）
+    const fileData = file ? {
+      id: file.id,
+      filename: file.filename,
+      packageName: file.package_name,
+      subsystem: file.subsystem_id,
+      status: file.status,
+      currentVersion: file.current_version,
+      createdBy: { id: file.created_by, username: '', email: '', role: 'developer', createdAt: '' }, // TODO: fetch creator
+      createdAt: file.created_at,
+      updatedAt: file.updated_at,
+      locked: file.locked === 1,
+      lockedBy: null, // simplification
+      lockedAt: file.locked_at,
+    } : {
       id: entity.file_id,
-      filename: '',
+      filename: 'Unknown File',
       packageName: '',
       subsystem: 0,
-      status: 'draft',
-      currentVersion: 1,
+      status: 'unknown',
+      currentVersion: 0,
       createdBy: { id: 0, username: '', email: '', role: 'developer', createdAt: '' },
       createdAt: '',
       updatedAt: '',
       locked: false,
       lockedBy: null,
       lockedAt: null,
-    },
-    fileVersion: entity.file_version_id
-      ? {
-          id: entity.file_version_id,
-          version: 1,
-          filePath: '',
-          changeNote: undefined,
-          modifiedBy: { id: entity.submitted_by, username: '', email: '', role: 'developer', createdAt: '' },
-          modifiedAt: entity.submitted_at,
-        }
-      : undefined,
-    submittedBy: {
-      id: entity.submitted_by,
-      username: '', // TODO: 从用户表获取
-      email: '',
-      role: 'developer',
-      createdAt: '',
-    },
-    submittedAt: entity.submitted_at,
-    reviewedBy: entity.reviewed_by
-      ? {
-          id: entity.reviewed_by,
-          username: '',
-          email: '',
-          role: 'developer',
-          createdAt: '',
-        }
-      : null,
-    reviewedAt: entity.reviewed_at || null,
-    status: entity.status,
-    reviewComment: entity.review_comment || null,
+    };
+
+    return {
+      id: entity.id,
+      file: fileData,
+      fileVersion: undefined, // simplify for now
+      submittedBy: submittedBy ? {
+        id: submittedBy.id,
+        username: submittedBy.username,
+        email: submittedBy.email,
+        role: submittedBy.role,
+        createdAt: submittedBy.created_at,
+      } : {
+        id: entity.submitted_by,
+        username: 'Unknown User',
+        email: '',
+        role: 'developer',
+        createdAt: '',
+      },
+      submittedAt: entity.submitted_at,
+      reviewedBy: reviewedBy ? {
+        id: reviewedBy.id,
+        username: reviewedBy.username,
+        email: reviewedBy.email,
+        role: reviewedBy.role,
+        createdAt: reviewedBy.created_at,
+      } : null,
+      reviewedAt: entity.reviewed_at || null,
+      status: entity.status,
+      reviewComment: entity.review_comment || null,
+    };
   }));
 
   return {
@@ -73,21 +102,38 @@ export function getPendingReviews(params: { page: number; pageSize: number }): {
 /**
  * 根据 ID 获取审核
  */
-export function getReviewById(reviewId: number): Review | undefined {
+export async function getReviewById(reviewId: number): Promise<Review | undefined> {
   const entity = reviewRepository.findById(reviewId);
   if (!entity) {
     return undefined;
   }
 
+  const file = protoFileRepository.findById(entity.file_id);
+  const submittedBy = await userRepository.findById(entity.submitted_by);
+  const reviewedBy = entity.reviewed_by ? await userRepository.findById(entity.reviewed_by) : null;
+
   return {
     id: entity.id,
-    file: {
+    file: file ? {
+      id: file.id,
+      filename: file.filename,
+      packageName: file.package_name,
+      subsystem: file.subsystem_id,
+      status: file.status,
+      currentVersion: file.current_version,
+      createdBy: { id: file.created_by, username: '', email: '', role: 'developer', createdAt: '' },
+      createdAt: file.created_at,
+      updatedAt: file.updated_at,
+      locked: file.locked === 1,
+      lockedBy: null,
+      lockedAt: file.locked_at,
+    } : {
       id: entity.file_id,
-      filename: '',
+      filename: 'Unknown File',
       packageName: '',
       subsystem: 0,
-      status: 'draft',
-      currentVersion: 1,
+      status: 'unknown',
+      currentVersion: 0,
       createdBy: { id: 0, username: '', email: '', role: 'developer', createdAt: '' },
       createdAt: '',
       updatedAt: '',
@@ -97,31 +143,35 @@ export function getReviewById(reviewId: number): Review | undefined {
     },
     fileVersion: entity.file_version_id
       ? {
-          id: entity.file_version_id,
-          version: 1,
-          filePath: '',
-          changeNote: undefined,
-          modifiedBy: { id: entity.submitted_by, username: '', email: '', role: 'developer', createdAt: '' },
-          modifiedAt: entity.submitted_at,
-        }
+        id: entity.file_version_id,
+        version: 1,
+        filePath: '',
+        changeNote: undefined,
+        modifiedBy: { id: entity.submitted_by, username: '', email: '', role: 'developer', createdAt: '' },
+        modifiedAt: entity.submitted_at,
+      }
       : undefined,
-    submittedBy: {
+    submittedBy: submittedBy ? {
+      id: submittedBy.id,
+      username: submittedBy.username,
+      email: submittedBy.email,
+      role: submittedBy.role,
+      createdAt: submittedBy.created_at,
+    } : {
       id: entity.submitted_by,
-      username: '',
+      username: 'Unknown User',
       email: '',
       role: 'developer',
       createdAt: '',
     },
     submittedAt: entity.submitted_at,
-    reviewedBy: entity.reviewed_by
-      ? {
-          id: entity.reviewed_by,
-          username: '',
-          email: '',
-          role: 'developer',
-          createdAt: '',
-        }
-      : null,
+    reviewedBy: reviewedBy ? {
+      id: reviewedBy.id,
+      username: reviewedBy.username,
+      email: reviewedBy.email,
+      role: reviewedBy.role,
+      createdAt: reviewedBy.created_at,
+    } : null,
     reviewedAt: entity.reviewed_at || null,
     status: entity.status,
     reviewComment: entity.review_comment || null,
@@ -131,7 +181,7 @@ export function getReviewById(reviewId: number): Review | undefined {
 /**
  * 批准审核
  */
-export function approveReview(reviewId: number, reviewedBy: number, comment?: string): Review {
+export async function approveReview(reviewId: number, reviewedBy: number, comment?: string): Promise<Review> {
   const entity = reviewRepository.findById(reviewId);
   if (!entity) {
     throw new NotFoundError('审核记录不存在');
@@ -147,13 +197,13 @@ export function approveReview(reviewId: number, reviewedBy: number, comment?: st
   // 更新审核记录
   reviewRepository.approve(reviewId, reviewedBy, comment);
 
-  return getReviewById(reviewId)!;
+  return (await getReviewById(reviewId))!;
 }
 
 /**
  * 拒绝审核
  */
-export function rejectReview(reviewId: number, reviewedBy: number, comment: string): Review {
+export async function rejectReview(reviewId: number, reviewedBy: number, comment: string): Promise<Review> {
   const entity = reviewRepository.findById(reviewId);
   if (!entity) {
     throw new NotFoundError('审核记录不存在');
@@ -169,13 +219,13 @@ export function rejectReview(reviewId: number, reviewedBy: number, comment: stri
   // 更新审核记录
   reviewRepository.reject(reviewId, reviewedBy, comment);
 
-  return getReviewById(reviewId)!;
+  return (await getReviewById(reviewId))!;
 }
 
 /**
  * 创建审核记录（文件提交流程）
  */
-export function createReview(fileId: number, submittedBy: number): Review {
+export async function createReview(fileId: number, submittedBy: number): Promise<Review> {
   const entity = protoFileRepository.findById(fileId);
   if (!entity) {
     throw new NotFoundError('文件不存在');
@@ -194,60 +244,76 @@ export function createReview(fileId: number, submittedBy: number): Review {
     review_comment: null,
   });
 
-  return getReviewById(reviewId)!;
+  return (await getReviewById(reviewId))!;
 }
 
 /**
  * 获取文件的审核历史
  */
-export function getReviewsByFileId(fileId: number): Review[] {
+export async function getReviewsByFileId(fileId: number): Promise<Review[]> {
   const entities = reviewRepository.findByFileId(fileId);
 
-  return entities.map((entity: any) => ({
-    id: entity.id,
-    file: {
+  return Promise.all(entities.map(async (entity: any) => {
+    const file = protoFileRepository.findById(entity.file_id);
+    const submittedBy = await userRepository.findById(entity.submitted_by);
+    const reviewedBy = entity.reviewed_by ? await userRepository.findById(entity.reviewed_by) : null;
+
+    const fileData = file ? {
+      id: file.id,
+      filename: file.filename,
+      packageName: file.package_name,
+      subsystem: file.subsystem_id,
+      status: file.status,
+      currentVersion: file.current_version,
+      createdBy: { id: file.created_by, username: '', email: '', role: 'developer', createdAt: '' },
+      createdAt: file.created_at,
+      updatedAt: file.updated_at,
+      locked: false,
+      lockedBy: null,
+      lockedAt: null,
+    } : {
       id: entity.file_id,
-      filename: '',
+      filename: 'Unknown File',
       packageName: '',
       subsystem: 0,
-      status: 'draft',
-      currentVersion: 1,
+      status: 'unknown',
+      currentVersion: 0,
       createdBy: { id: 0, username: '', email: '', role: 'developer', createdAt: '' },
       createdAt: '',
       updatedAt: '',
       locked: false,
       lockedBy: null,
       lockedAt: null,
-    },
-    fileVersion: entity.file_version_id
-      ? {
-          id: entity.file_version_id,
-          version: 1,
-          filePath: '',
-          changeNote: undefined,
-          modifiedBy: { id: entity.submitted_by, username: '', email: '', role: 'developer', createdAt: '' },
-          modifiedAt: entity.submitted_at,
-        }
-      : undefined,
-    submittedBy: {
-      id: entity.submitted_by,
-      username: '',
-      email: '',
-      role: 'developer',
-      createdAt: '',
-    },
-    submittedAt: entity.submitted_at,
-    reviewedBy: entity.reviewed_by
-      ? {
-          id: entity.reviewed_by,
-          username: '',
-          email: '',
-          role: 'developer',
-          createdAt: '',
-        }
-      : null,
-    reviewedAt: entity.reviewed_at || null,
-    status: entity.status,
-    reviewComment: entity.review_comment || null,
+    };
+
+    return {
+      id: entity.id,
+      file: fileData,
+      fileVersion: undefined,
+      submittedBy: submittedBy ? {
+        id: submittedBy.id,
+        username: submittedBy.username,
+        email: submittedBy.email,
+        role: submittedBy.role,
+        createdAt: submittedBy.created_at,
+      } : {
+        id: entity.submitted_by,
+        username: 'Unknown User',
+        email: '',
+        role: 'developer',
+        createdAt: '',
+      },
+      submittedAt: entity.submitted_at,
+      reviewedBy: reviewedBy ? {
+        id: reviewedBy.id,
+        username: reviewedBy.username,
+        email: reviewedBy.email,
+        role: reviewedBy.role,
+        createdAt: reviewedBy.created_at,
+      } : null,
+      reviewedAt: entity.reviewed_at || null,
+      status: entity.status,
+      reviewComment: entity.review_comment || null,
+    };
   }));
 }

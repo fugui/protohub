@@ -23,7 +23,8 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 20;
-    const result = await getReviews({ page, pageSize });
+    const status = req.query.status as string;
+    const result = await getReviews({ page, pageSize, status });
     res.json(result);
   })
 );

@@ -118,7 +118,8 @@ export interface ViolationEntity {
  */
 export interface DependencyEntity {
   id: number;
-  source_file_id: number;
+  source_file_id?: number | null; // 可为空，表示子系统级依赖
+  source_subsystem_id?: number | null; // 对应的子系统ID
   target_file_id: number;
   dependency_type: string;
   created_at: string;

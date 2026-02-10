@@ -145,15 +145,18 @@ CREATE INDEX IF NOT EXISTS idx_violations_rule_type ON violations(rule_type);
 -- 创建 dependencies 表
 CREATE TABLE IF NOT EXISTS dependencies (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  source_file_id INTEGER NOT NULL,
+  source_file_id INTEGER,
+  source_subsystem_id INTEGER,
   target_file_id INTEGER NOT NULL,
   dependency_type TEXT NOT NULL DEFAULT 'import',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (source_file_id) REFERENCES proto_files(id) ON DELETE CASCADE,
+  FOREIGN KEY (source_subsystem_id) REFERENCES subsystems(id) ON DELETE CASCADE,
   FOREIGN KEY (target_file_id) REFERENCES proto_files(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_dependencies_source ON dependencies(source_file_id);
+CREATE INDEX IF NOT EXISTS idx_dependencies_source_file ON dependencies(source_file_id);
+CREATE INDEX IF NOT EXISTS idx_dependencies_source_sub ON dependencies(source_subsystem_id);
 CREATE INDEX IF NOT EXISTS idx_dependencies_target ON dependencies(target_file_id);
 
 -- 创建 vocabulary_terms 表

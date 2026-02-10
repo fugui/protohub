@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Table, Button, Space, Tag, message, Modal, Input, Form } from 'antd';
+import { Table, Button, Space, Tag, message, Modal, Input, Form, Tabs } from 'antd';
 import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { getReviews, approveReview, rejectReview } from '../services/reviewService';
 import type { Review } from 'protohub-shared';
@@ -19,10 +19,15 @@ export function ReviewPage() {
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
 
-  const fetchReviews = async (pageNum = 1) => {
+  const [activeStatus, setActiveStatus] = useState('pending_review');
+
+  const fetchReviews = async (pageNum = 1, status = activeStatus) => {
     try {
       setLoading(true);
-      const result = await getReviews({ page: pageNum, pageSize: 20 });
+      // Pass status to API. Assuming getReviews supports it now.
+      // Need to update getReviews service in frontend too?
+      // Step 419 shows `import { getReviews ... }`. Check frontend service.
+      const result = await getReviews({ page: pageNum, pageSize: 20, status });
       setReviews(result.data);
       setTotal(result.total);
       setPage(pageNum);
@@ -99,6 +104,20 @@ export function ReviewPage() {
         <h1>审核工作台</h1>
         <p>管理待审核的 Proto 文件变更请求</p>
       </div>
+
+      <Tabs
+        activeKey={activeStatus}
+        onChange={(key) => {
+          setActiveStatus(key);
+          setPage(1);
+          fetchReviews(1, key);
+        }}
+        items={[
+          { key: 'pending_review', label: '待审核' },
+          { key: 'history', label: '审核历史' },
+        ]}
+        style={{ marginBottom: 16 }}
+      />
 
       <Table
         dataSource={reviews}

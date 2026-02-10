@@ -32,6 +32,7 @@ api.interceptors.request.use((config) => {
 export async function getDependencyGraph(params: {
   fileId?: number;
   subsystemId?: number;
+  level?: 'file' | 'subsystem';
 }): Promise<{
   nodes: DependencyNode[];
   edges: DependencyEdge[];
@@ -66,5 +67,29 @@ export async function getAllSubsystems(): Promise<Subsystem[]> {
  */
 export async function getSubsystemById(id: number): Promise<Subsystem> {
   const response = await api.get(`/subsystems/${id}`);
+  return response.data;
+}
+
+/**
+ * 创建依赖关系
+ */
+export async function createDependency(sourceFileId: number, targetFileId: number): Promise<{ id: number; message: string }> {
+  const response = await api.post('/dependencies', { sourceFileId, targetFileId });
+  return response.data;
+}
+
+/**
+ * 创建子系统依赖关系
+ */
+export async function createSubsystemDependency(sourceSubsystemId: number, targetFileIds: number[]): Promise<{ count: number; message: string }> {
+  const response = await api.post('/dependencies/subsystem', { sourceSubsystemId, targetFileIds });
+  return response.data;
+}
+
+/**
+ * 删除依赖关系
+ */
+export async function deleteDependency(id: number): Promise<{ message: string }> {
+  const response = await api.delete(`/dependencies/${id}`);
   return response.data;
 }

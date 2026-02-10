@@ -4,7 +4,7 @@
 
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../../middlewares/errorHandler';
-import { getDependencyGraph, getImpactAnalysis } from '../controllers/dependency.controller';
+import { getDependencyGraph, getImpactAnalysis, createDependency, createSubsystemDependency, deleteDependency } from '../controllers/dependency.controller';
 
 const router = Router();
 
@@ -14,8 +14,48 @@ const router = Router();
  */
 router.get(
   '/graph',
-  asyncHandler(async (_req: Request, res: Response) => {
-    const result = await getDependencyGraph();
+  asyncHandler(async (req: Request, res: Response) => {
+    const level = req.query.level as string;
+    const result = await getDependencyGraph(level);
+    res.json(result);
+  })
+);
+
+/**
+ * POST /api/v1/dependencies
+ * 创建依赖关系
+ */
+router.post(
+  '/',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { sourceFileId, targetFileId } = req.body;
+    const result = await createDependency(sourceFileId, targetFileId);
+    res.status(201).json(result);
+  })
+);
+
+/**
+ * POST /api/v1/dependencies/subsystem
+ * 创建子系统依赖关系
+ */
+router.post(
+  '/subsystem',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { sourceSubsystemId, targetFileIds } = req.body;
+    const result = await createSubsystemDependency(sourceSubsystemId, targetFileIds);
+    res.status(201).json(result);
+  })
+);
+
+/**
+ * DELETE /api/v1/dependencies/:id
+ * 删除依赖关系
+ */
+router.delete(
+  '/:id',
+  asyncHandler(async (req: Request, res: Response) => {
+    const id = parseInt(req.params.id);
+    const result = await deleteDependency(id);
     res.json(result);
   })
 );

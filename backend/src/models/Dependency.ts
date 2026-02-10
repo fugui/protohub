@@ -51,6 +51,21 @@ export class DependencyRepository extends BaseRepository<DependencyEntity> {
   }
 
   /**
+   * 删除单个依赖关系
+   */
+  deleteDependency(id: number): void {
+    this.delete(id);
+  }
+
+  /**
+   * 检查依赖关系是否存在
+   */
+  dependencyExists(sourceFileId: number, targetFileId: number): boolean {
+    const existing = this.findOne({ source_file_id: sourceFileId, target_file_id: targetFileId });
+    return existing !== undefined;
+  }
+
+  /**
    * 查询所有依赖关系
    */
   findAll(): DependencyEntity[] {
