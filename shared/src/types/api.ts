@@ -193,8 +193,13 @@ export interface VocabularyTerm {
   id: number;
   term: string;
   description?: string;
+  descriptionEn?: string;
+  aliases?: string[];
+  similarTerms?: string[];
+  domain?: string;
   category?: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 /**

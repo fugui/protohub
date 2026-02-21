@@ -3,7 +3,7 @@
  */
 
 import type { ProtoFileEntity } from 'protohub-shared';
-import { BaseRepository, PaginatedResult } from '../config/database';
+import { BaseRepository, PaginatedResult } from '../repositories/BaseRepository';
 import type Database from 'better-sqlite3';
 import { getDatabase } from '../config/db';
 
@@ -12,7 +12,7 @@ export class ProtoFileRepository extends BaseRepository<ProtoFileEntity> {
     super('proto_files', 'id');
   }
 
-  protected getDb(): Database.Database {
+  public getDb(): Database.Database {
     return getDatabase();
   }
 

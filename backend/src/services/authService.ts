@@ -61,7 +61,7 @@ export async function register(data: RegisterRequest): Promise<User> {
   const passwordHash = await bcrypt.hash(data.password, 10);
 
   // 创建用户
-  const userId = await userRepository.create({
+  const userId = await userRepository.createUser({
     username: data.username,
     email: data.email,
     password_hash: passwordHash,
@@ -69,7 +69,7 @@ export async function register(data: RegisterRequest): Promise<User> {
   });
 
   // 返回用户信息
-  const user = await userRepository.findById(userId);
+  const user = userRepository.findById(userId);
   if (!user) {
     throw new NotFoundError('用户创建失败');
   }

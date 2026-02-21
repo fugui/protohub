@@ -2,29 +2,8 @@
  * 检查 API 服务
  */
 
-import axios from 'axios';
+import { api } from './api';
 import type { CheckReport } from 'protohub-shared';
-
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
-const api = axios.create({
-  baseURL: BASE_URL,
-});
-
-/**
- * 获取认证 token
- */
-function getAuthToken(): string | null {
-  return localStorage.getItem('auth_token');
-}
-
-// 请求拦截器
-api.interceptors.request.use((config) => {
-  const token = getAuthToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
 
 /**
  * 执行文件检查

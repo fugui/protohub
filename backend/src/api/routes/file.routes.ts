@@ -15,7 +15,7 @@ import {
   unlockFile,
   submitReview,
 } from '../controllers/file.controller';
-import { runCheck } from '../controllers/check.controller';
+import { runCheck, getVocabularyReport } from '../controllers/check.controller';
 
 const router = Router();
 
@@ -145,6 +145,19 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const fileId = parseInt(req.params.fileId);
     const result = await runCheck(fileId);
+    res.json(result);
+  })
+);
+
+/**
+ * GET /api/v1/files/:fileId/vocabulary-report
+ * 获取文件词汇检查报告
+ */
+router.get(
+  '/:fileId/vocabulary-report',
+  asyncHandler(async (req: Request, res: Response) => {
+    const fileId = parseInt(req.params.fileId);
+    const result = await getVocabularyReport(fileId);
     res.json(result);
   })
 );

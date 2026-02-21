@@ -8,8 +8,10 @@ import {
 import { checkReportRepository, checkViolationRepository } from '../../models/CheckReport';
 import { protoFileRepository } from '../../models/ProtoFile';
 import { userRepository } from '../../models/User';
-import type { CheckReport } from 'protohub-shared';
+import { vocabularyTermRepository } from '../../models/VocabularyTerm';
+import type { CheckReport, Violation } from 'protohub-shared';
 import { NotFoundError } from '../../middlewares/errorHandler';
+import { checkVocabularyAsync } from '../../utils/vocabularyRule';
 
 /**
  * 执行文件检查
@@ -38,7 +40,6 @@ export function getReport(reportId: number): CheckReport {
 
   return {
     id: reportEntity.id,
-    fileId: file.id,
     file: {
       id: file.id,
       filename: file.filename,
@@ -74,7 +75,69 @@ export function getReport(reportId: number): CheckReport {
       violationMessage: v.violation_message,
       suggestion: v.suggestion ?? undefined,
     })),
-    status: violations.filter((v: any) => v.severity === 'error').length === 0 ? 'passed' : 'failed',
     passed: violations.filter((v: any) => v.severity === 'error').length === 0,
+  };
+}
+
+/**
+ * 词汇检查报告详情
+ */
+export interface VocabularyReport {
+  fileId: number;
+  fileName: string;
+  checkedAt: string;
+  violations: Violation[];
+  standardTerms: string[];
+  totalTerms: number;
+  violationCount: number;
+  warningCount: number;
+  errorCount: number;
+  infoCount: number;
+}
+
+/**
+ * 获取文件词汇检查报告
+ */
+export async function getVocabularyReport(fileId: number): Promise<VocabularyReport> {
+  const file = protoFileRepository.findById(fileId);
+  if (!file) {
+    throw new NotFoundError('文件不存在');
+  }
+
+  // 读取文件内容
+  const fs = await import('fs/promises');
+  let content = '';
+  try {
+    content = await fs.readFile(file.file_path, 'utf-8');
+  } catch (error) {
+    console.error(`读取文件失败: ${file.file_path}`, error);
+    throw new NotFoundError('无法读取文件内容');
+  }
+
+  // 获取标准词汇
+  const standardTerms = vocabularyTermRepository.getAllTerms();
+
+  // 执行词汇检查（包含 LLM 智能匹配）
+  const violations = await checkVocabularyAsync(content, standardTerms, {
+    enableLLM: true,
+    confidenceThreshold: 0.8,
+  });
+
+  // 统计各严重程度数量
+  const warningCount = violations.filter(v => v.severity === 'warning').length;
+  const errorCount = violations.filter(v => v.severity === 'error').length;
+  const infoCount = violations.filter(v => v.severity === 'info').length;
+
+  return {
+    fileId: file.id,
+    fileName: file.filename,
+    checkedAt: new Date().toISOString(),
+    violations,
+    standardTerms,
+    totalTerms: standardTerms.length,
+    violationCount: violations.length,
+    warningCount,
+    errorCount,
+    infoCount,
   };
 }

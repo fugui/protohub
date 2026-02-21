@@ -3,7 +3,7 @@
  */
 
 import type { FileVersionEntity } from 'protohub-shared';
-import { BaseRepository } from '../config/database';
+import { BaseRepository } from '../repositories/BaseRepository';
 import type Database from 'better-sqlite3';
 import { getDatabase } from '../config/db';
 
@@ -12,7 +12,7 @@ export class FileVersionRepository extends BaseRepository<FileVersionEntity> {
     super('file_versions', 'id');
   }
 
-  protected getDb(): Database.Database {
+  public getDb(): Database.Database {
     return getDatabase();
   }
 

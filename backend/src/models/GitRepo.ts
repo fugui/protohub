@@ -3,7 +3,7 @@
  */
 
 import type { GitRepoEntity } from 'protohub-shared';
-import { BaseRepository } from '../config/database';
+import { BaseRepository } from '../repositories/BaseRepository';
 import type Database from 'better-sqlite3';
 import { getDatabase } from '../config/db';
 
@@ -12,7 +12,7 @@ export class GitRepoRepository extends BaseRepository<GitRepoEntity> {
     super('git_repos', 'id');
   }
 
-  protected getDb(): Database.Database {
+  public getDb(): Database.Database {
     return getDatabase();
   }
 

@@ -12,14 +12,15 @@ export class ViolationRepository extends BaseRepository<Violation> {
   /**
    * 创建违规项
    */
-  async create(data: Omit<Violation, 'id'>): Promise<number> {
-    return this.insert(data);
+  create(data: Omit<Violation, 'id'>): number {
+    const result = this.insert(data);
+    return Number(result.lastInsertRowid);
   }
 
   /**
    * 根据报告ID查找违规项
    */
-  async findByReportId(reportId: number): Promise<Violation[]> {
+  findByReportId(reportId: number): Violation[] {
     const stmt = this.getDb().prepare(`
       SELECT * FROM violations
       WHERE report_id = ?

@@ -2,11 +2,12 @@
  * 审核工作台页面
  */
 
-import { useState, useEffect } from 'react';
-import { Table, Button, Space, Tag, message, Modal, Input, Form, Tabs } from 'antd';
-import { CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
-import { getReviews, approveReview, rejectReview } from '../services/reviewService';
-import type { Review } from 'protohub-shared';
+import React, { useState, useEffect } from 'react';
+import { Table, Button, Space, Tag, message, Modal, Input, Form, Tabs, Badge, Card, List, Tooltip, Divider } from 'antd';
+import { CheckCircleOutlined, CloseCircleOutlined, EyeOutlined, FileTextOutlined, WarningOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { getReviews, approveReview, rejectReview, getVocabularyReport } from '../services/reviewService';
+import type { Review, Violation } from 'protohub-shared';
+import type { VocabularyReport } from '../services/reviewService';
 
 export function ReviewPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -20,6 +21,12 @@ export function ReviewPage() {
   const [rejecting, setRejecting] = useState(false);
 
   const [activeStatus, setActiveStatus] = useState('pending_review');
+
+  // 详情模态框状态
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [vocabularyReport, setVocabularyReport] = useState<VocabularyReport | null>(null);
+  const [loadingVocabulary, setLoadingVocabulary] = useState(false);
+  const [detailActiveTab, setDetailActiveTab] = useState('info');
 
   const fetchReviews = async (pageNum = 1, status = activeStatus) => {
     try {
@@ -96,6 +103,62 @@ export function ReviewPage() {
     };
     const { color, text } = statusMap[status] || { color: 'default', text: status };
     return <Tag color={color}>{text}</Tag>;
+  };
+
+  const getSeverityTag = (severity: string) => {
+    const severityMap: Record<string, { color: string; icon: React.ReactNode; text: string }> = {
+      error: { color: 'error', icon: <CloseCircleOutlined />, text: '错误' },
+      warning: { color: 'warning', icon: <WarningOutlined />, text: '警告' },
+      info: { color: 'default', icon: <InfoCircleOutlined />, text: '提示' },
+    };
+    const config = severityMap[severity] || severityMap.info;
+    return (
+      <Tag color={config.color} icon={config.icon}>
+        {config.text}
+      </Tag>
+    );
+  };
+
+  const showDetailModal = async (review: Review) => {
+    setSelectedReview(review);
+    setDetailModalVisible(true);
+    setDetailActiveTab('info');
+    await loadVocabularyReport(review.file?.id);
+  };
+
+  const loadVocabularyReport = async (fileId?: number) => {
+    if (!fileId) return;
+    try {
+      setLoadingVocabulary(true);
+      const report = await getVocabularyReport(fileId);
+      setVocabularyReport(report);
+    } catch (error) {
+      message.error('加载术语检查报告失败');
+      console.error('加载术语检查报告失败:', error);
+    } finally {
+      setLoadingVocabulary(false);
+    }
+  };
+
+  const handleGenerateTermComment = (violation: Violation) => {
+    const comment = `术语规范建议：${violation.violationMessage}`;
+    if (violation.suggestion) {
+      setRejectReason(prev => prev ? `${prev}\n${comment}，${violation.suggestion}` : `${comment}，${violation.suggestion}`);
+    } else {
+      setRejectReason(prev => prev ? `${prev}\n${comment}` : comment);
+    }
+    message.success('已生成评论到拒绝原因');
+  };
+
+  const handleGenerateAllTermsComment = () => {
+    if (!vocabularyReport?.violations.length) {
+      message.info('没有术语违规项');
+      return;
+    }
+    const comments = vocabularyReport.violations.map(v => `• ${v.violationMessage}`);
+    const fullComment = `术语规范检查发现问题：\n${comments.join('\n')}`;
+    setRejectReason(prev => prev ? `${prev}\n\n${fullComment}` : fullComment);
+    message.success('已生成所有术语评论到拒绝原因');
   };
 
   return (
@@ -175,10 +238,17 @@ export function ReviewPage() {
           {
             title: '操作',
             key: 'actions',
-            render: (_: any, record: Review) => {
-              if (record.status === 'pending_review') {
-                return (
-                  <Space>
+            render: (_: any, record: Review) => (
+              <Space>
+                <Button
+                  icon={<EyeOutlined />}
+                  onClick={() => showDetailModal(record)}
+                  size="small"
+                >
+                  详情
+                </Button>
+                {record.status === 'pending_review' && (
+                  <>
                     <Button
                       type="primary"
                       icon={<CheckCircleOutlined />}
@@ -197,11 +267,10 @@ export function ReviewPage() {
                     >
                       拒绝
                     </Button>
-                  </Space>
-                );
-              }
-              return <span>-</span>;
-            },
+                  </>
+                )}
+              </Space>
+            ),
           },
         ]}
       />
@@ -231,6 +300,177 @@ export function ReviewPage() {
             />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 审核详情模态框 */}
+      <Modal
+        title={`审核详情 - ${selectedReview?.file?.filename || ''}`}
+        open={detailModalVisible}
+        onCancel={() => {
+          setDetailModalVisible(false);
+          setSelectedReview(null);
+          setVocabularyReport(null);
+          setDetailActiveTab('info');
+        }}
+        footer={[
+          <Button key="close" onClick={() => {
+            setDetailModalVisible(false);
+            setSelectedReview(null);
+            setVocabularyReport(null);
+            setDetailActiveTab('info');
+          }}>
+            关闭
+          </Button>,
+          selectedReview?.status === 'pending_review' && (
+            <Button
+              key="reject"
+              danger
+              onClick={() => {
+                setDetailModalVisible(false);
+                showRejectModal(selectedReview);
+              }}
+            >
+              拒绝
+            </Button>
+          ),
+          selectedReview?.status === 'pending_review' && (
+            <Button
+              key="approve"
+              type="primary"
+              onClick={() => {
+                setDetailModalVisible(false);
+                handleApprove(selectedReview);
+              }}
+            >
+              批准
+            </Button>
+          ),
+        ].filter(Boolean)}
+        width={800}
+      >
+        <Tabs
+          activeKey={detailActiveTab}
+          onChange={setDetailActiveTab}
+          items={[
+            {
+              key: 'info',
+              label: '基本信息',
+              children: selectedReview && (
+                <div>
+                  <p><strong>文件名:</strong> {selectedReview.file?.filename}</p>
+                  <p><strong>包名:</strong> {selectedReview.file?.packageName || '-'}</p>
+                  <p><strong>状态:</strong> {getStatusTag(selectedReview.status)}</p>
+                  <p><strong>提交人:</strong> {selectedReview.submittedBy?.username || '-'}</p>
+                  <p><strong>提交时间:</strong> {new Date(selectedReview.submittedAt).toLocaleString('zh-CN')}</p>
+                  {selectedReview.reviewedBy && (
+                    <>
+                      <p><strong>审核人:</strong> {selectedReview.reviewedBy.username}</p>
+                      <p><strong>审核时间:</strong> {selectedReview.reviewedAt ? new Date(selectedReview.reviewedAt).toLocaleString('zh-CN') : '-'}</p>
+                    </>
+                  )}
+                  {selectedReview.reviewComment && (
+                    <p><strong>审核意见:</strong> {selectedReview.reviewComment}</p>
+                  )}
+                </div>
+              ),
+            },
+            {
+              key: 'vocabulary',
+              label: (
+                <span>
+                  术语检查报告
+                  {vocabularyReport && vocabularyReport.violationCount > 0 && (
+                    <Badge
+                      count={vocabularyReport.violationCount}
+                      style={{ marginLeft: 8 }}
+                      showZero={false}
+                    />
+                  )}
+                </span>
+              ),
+              children: (
+                <div>
+                  {loadingVocabulary ? (
+                    <div style={{ textAlign: 'center', padding: 40 }}>加载中...</div>
+                  ) : vocabularyReport ? (
+                    <>
+                      <Card size="small" style={{ marginBottom: 16 }}>
+                        <Space split={<Divider type="vertical" />}>
+                          <span>术语总数: <strong>{vocabularyReport.totalTerms}</strong></span>
+                          <span style={{ color: '#ff4d4f' }}>错误: <strong>{vocabularyReport.errorCount}</strong></span>
+                          <span style={{ color: '#faad14' }}>警告: <strong>{vocabularyReport.warningCount}</strong></span>
+                          <span style={{ color: '#8c8c8c' }}>提示: <strong>{vocabularyReport.infoCount}</strong></span>
+                        </Space>
+                      </Card>
+
+                      {vocabularyReport.violations.length > 0 ? (
+                        <>
+                          {selectedReview?.status === 'pending_review' && (
+                            <Button
+                              type="primary"
+                              icon={<FileTextOutlined />}
+                              onClick={handleGenerateAllTermsComment}
+                              style={{ marginBottom: 16 }}
+                              block
+                            >
+                              一键生成术语评论
+                            </Button>
+                          )}
+                          <List
+                            dataSource={vocabularyReport.violations}
+                            renderItem={(violation) => (
+                              <List.Item>
+                                <Card
+                                  size="small"
+                                  style={{ width: '100%' }}
+                                  title={
+                                    <Space>
+                                      {getSeverityTag(violation.severity)}
+                                      <span>第 {violation.fileLine || '-'} 行</span>
+                                    </Space>
+                                  }
+                                  extra={
+                                    selectedReview?.status === 'pending_review' && (
+                                      <Tooltip title="生成评论到拒绝原因">
+                                        <Button
+                                          size="small"
+                                          icon={<FileTextOutlined />}
+                                          onClick={() => handleGenerateTermComment(violation)}
+                                        >
+                                          生成评论
+                                        </Button>
+                                      </Tooltip>
+                                    )
+                                  }
+                                >
+                                  <p><strong>问题:</strong> {violation.violationMessage}</p>
+                                  {violation.suggestion && (
+                                    <p style={{ color: '#1890ff' }}>
+                                      <strong>建议:</strong> {violation.suggestion}
+                                    </p>
+                                  )}
+                                </Card>
+                              </List.Item>
+                            )}
+                          />
+                        </>
+                      ) : (
+                        <div style={{ textAlign: 'center', padding: 40, color: '#52c41a' }}>
+                          <CheckCircleOutlined style={{ fontSize: 48, marginBottom: 16 }} />
+                          <p>恭喜！未发现术语违规项</p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+                      无法加载术语检查报告
+                    </div>
+                  )}
+                </div>
+              ),
+            },
+          ]}
+        />
       </Modal>
     </div>
   );

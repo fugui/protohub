@@ -2,29 +2,8 @@
  * 文件 API 服务
  */
 
-import axios from 'axios';
+import { api } from './api';
 import type { ProtoFile, ProtoFileDetail, PaginatedResponse } from 'protohub-shared';
-
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
-const api = axios.create({
-  baseURL: BASE_URL,
-});
-
-/**
- * 获取认证 token
- */
-function getAuthToken(): string | null {
-  return localStorage.getItem('auth_token');
-}
-
-// 请求拦截器
-api.interceptors.request.use((config) => {
-  const token = getAuthToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
 
 /**
  * 获取文件列表
@@ -61,7 +40,7 @@ export async function createFile(data: FormData): Promise<ProtoFile> {
 }
 
 /**
- * 更新文件
+ * 更新文件内容
  */
 export async function updateFile(
   fileId: number,
@@ -81,7 +60,7 @@ export async function deleteFile(fileId: number): Promise<void> {
 /**
  * 锁定文件
  */
-export async function lockFile(fileId: number): Promise<any> {
+export async function lockFile(fileId: number): Promise<{ message: string; locked: boolean }> {
   const response = await api.post(`/files/${fileId}/lock`);
   return response.data;
 }
@@ -89,7 +68,7 @@ export async function lockFile(fileId: number): Promise<any> {
 /**
  * 解锁文件
  */
-export async function unlockFile(fileId: number): Promise<any> {
+export async function unlockFile(fileId: number): Promise<{ message: string; locked: boolean }> {
   const response = await api.post(`/files/${fileId}/unlock`);
   return response.data;
 }
@@ -97,15 +76,14 @@ export async function unlockFile(fileId: number): Promise<any> {
 /**
  * 提交审核
  */
-export async function submitReview(fileId: number): Promise<any> {
-  const response = await api.post(`/files/${fileId}/submit-review`);
-  return response.data;
+export async function submitReview(fileId: number): Promise<void> {
+  await api.post(`/files/${fileId}/submit-review`);
 }
 
 /**
- * 获取文件版本列表
+ * 获取文件版本历史
  */
-export async function getFileVersions(fileId: number): Promise<any> {
+export async function getFileVersions(fileId: number): Promise<any[]> {
   const response = await api.get(`/files/${fileId}/versions`);
   return response.data;
 }
@@ -117,9 +95,9 @@ export async function diffFileVersions(
   fileId: number,
   version1: number,
   version2: number
-): Promise<any> {
+): Promise<{ diff: string }> {
   const response = await api.get(`/files/${fileId}/versions/diff`, {
-    params: { version1, version2 },
+    params: { v1: version1, v2: version2 },
   });
   return response.data;
 }

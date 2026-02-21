@@ -3,7 +3,7 @@
  */
 
 import type { CheckReportEntity, ViolationEntity } from 'protohub-shared';
-import { BaseRepository } from '../config/database';
+import { BaseRepository } from '../repositories/BaseRepository';
 import type Database from 'better-sqlite3';
 import { getDatabase } from '../config/db';
 
@@ -12,7 +12,7 @@ export class CheckReportRepository extends BaseRepository<CheckReportEntity> {
     super('check_reports', 'id');
   }
 
-  protected getDb(): Database.Database {
+  public getDb(): Database.Database {
     return getDatabase();
   }
 
@@ -52,7 +52,7 @@ export class CheckViolationRepository extends BaseRepository<ViolationEntity> {
     super('violations', 'id');
   }
 
-  protected getDb(): Database.Database {
+  public getDb(): Database.Database {
     return getDatabase();
   }
 

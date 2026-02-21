@@ -6,10 +6,11 @@ import fs from 'fs/promises';
 import { checkReportRepository, checkViolationRepository } from '../models/CheckReport';
 import { protoFileRepository } from '../models/ProtoFile';
 import { fileVersionRepository } from '../models/FileVersion';
-import type { CheckReport } from 'protohub-shared';
+import type { CheckReport, Violation } from 'protohub-shared';
 import { runAllRules } from './checkEngine';
 import { vocabularyTermRepository } from '../models/VocabularyTerm';
 import { NotFoundError, ValidationError } from '../middlewares/errorHandler';
+import { checkVocabularyAsync } from '../utils/vocabularyRule';
 
 /**
  * 执行文件检查
@@ -34,7 +35,16 @@ export async function checkFile(fileId: number): Promise<CheckReport> {
   const standardTerms = vocabularyTermRepository.getAllTerms();
 
   // 执行所有检查规则
-  const violations = runAllRules(content, standardTerms);
+  const ruleViolations = runAllRules(content, standardTerms);
+
+  // 执行词汇检查（包含 LLM 智能匹配）
+  const vocabularyViolations = await checkVocabularyAsync(content, standardTerms, {
+    enableLLM: true,
+    confidenceThreshold: 0.8,
+  });
+
+  // 合并所有违规项
+  const violations: Violation[] = [...ruleViolations, ...vocabularyViolations];
 
   // 查找文件版本的 ID
   const fileVersion = fileVersionRepository.findByFileIdAndVersion(

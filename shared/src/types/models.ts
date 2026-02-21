@@ -133,6 +133,7 @@ export interface SubsystemEntity {
   name: string;
   description?: string | null;
   owner?: string | null;
+  layer_level?: number | null;  // 所属架构层级
   created_at: string;
 }
 
@@ -143,14 +144,20 @@ export interface VocabularyTermEntity {
   id: number;
   term: string;
   description?: string | null;
+  description_en?: string | null;
+  aliases?: string | null; // JSON array
+  similar_terms?: string | null; // JSON array
+  domain?: string | null;
   category?: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 /**
  * Proto 文件解析结果
  */
 export interface ProtoParseResult {
+  syntax: string;
   packageName: string;
   messages: ProtoMessage[];
   enums: ProtoEnum[];
@@ -172,9 +179,12 @@ export interface ProtoMessage {
 export interface ProtoField {
   name: string;
   type: string;
-  number: number;
-  repeated: boolean;
-  optional: boolean;
+  number?: number;
+  repeated?: boolean;
+  optional?: boolean;
+  defaultValue?: string;
+  nestedType?: string;
+  messageDef?: ProtoMessage;
 }
 
 /**
@@ -190,7 +200,8 @@ export interface ProtoEnum {
  */
 export interface ProtoEnumValue {
   name: string;
-  number: number;
+  number?: number;
+  value?: number;
 }
 
 /**
@@ -208,6 +219,6 @@ export interface ProtoMethod {
   name: string;
   requestType: string;
   responseType: string;
-  clientStreaming: boolean;
-  serverStreaming: boolean;
+  clientStreaming?: boolean;
+  serverStreaming?: boolean;
 }

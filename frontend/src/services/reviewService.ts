@@ -2,29 +2,24 @@
  * 审核 API 服务
  */
 
-import axios from 'axios';
-import type { Review, PaginatedResponse } from 'protohub-shared';
-
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
-const api = axios.create({
-  baseURL: BASE_URL,
-});
+import { api } from './api';
+import type { Review, PaginatedResponse, Violation } from 'protohub-shared';
 
 /**
- * 获取认证 token
+ * 词汇检查报告
  */
-function getAuthToken(): string | null {
-  return localStorage.getItem('auth_token');
+export interface VocabularyReport {
+  fileId: number;
+  fileName: string;
+  checkedAt: string;
+  violations: Violation[];
+  standardTerms: string[];
+  totalTerms: number;
+  violationCount: number;
+  warningCount: number;
+  errorCount: number;
+  infoCount: number;
 }
-
-// 请求拦截器
-api.interceptors.request.use((config) => {
-  const token = getAuthToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
 
 /**
  * 获取待审核列表
@@ -68,4 +63,12 @@ export async function getReviewById(reviewId: number): Promise<Review> {
 export async function getFileReviews(fileId: number): Promise<Review[]> {
   const response = await api.get(`/reviews?fileId=${fileId}`);
   return response.data.data || [];
+}
+
+/**
+ * 获取文件词汇检查报告
+ */
+export async function getVocabularyReport(fileId: number): Promise<VocabularyReport> {
+  const response = await api.get(`/files/${fileId}/vocabulary-report`);
+  return response.data;
 }

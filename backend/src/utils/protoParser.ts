@@ -2,7 +2,7 @@
  * Proto 文件解析工具
  */
 
-import type { ProtoParseResult } from 'protohub-shared';
+import type { ProtoParseResult, ProtoMessage, ProtoEnum, ProtoService } from 'protohub-shared';
 
 /**
  * 解析 Proto 文件
@@ -101,8 +101,8 @@ export function parseProtoFile(content: string): ProtoParseResult {
 /**
  * 解析消息定义
  */
-function parseMessageDefinition(name: string, lines: string[], startIndex: number): { message: any; nextIndex: number } {
-  const message = {
+function parseMessageDefinition(name: string, lines: string[], startIndex: number): { message: ProtoMessage; nextIndex: number } {
+  const message: ProtoMessage = {
     name,
     fields: [],
   };
@@ -181,8 +181,8 @@ function parseMessageDefinition(name: string, lines: string[], startIndex: numbe
 /**
  * 解析枚举定义
  */
-function parseEnumDefinition(name: string, lines: string[], startIndex: number): { enumDef: any, nextIndex: number } {
-  const enumDef = {
+function parseEnumDefinition(name: string, lines: string[], startIndex: number): { enumDef: ProtoEnum; nextIndex: number } {
+  const enumDef: ProtoEnum = {
     name,
     values: [],
   };
@@ -239,8 +239,8 @@ function parseEnumDefinition(name: string, lines: string[], startIndex: number):
 /**
  * 解析服务定义
  */
-function parseServiceDefinition(name: string, lines: string[], startIndex: number): { service: any, nextIndex: number } {
-  const service = {
+function parseServiceDefinition(name: string, lines: string[], startIndex: number): { service: ProtoService; nextIndex: number } {
+  const service: ProtoService = {
     name,
     methods: [],
   };

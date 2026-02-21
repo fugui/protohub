@@ -15,9 +15,6 @@ const api = axios.create({
  */
 export async function login(data: LoginRequest): Promise<LoginResponse> {
   const response = await api.post('/auth/login', data);
-  // 保存 token
-  localStorage.setItem('auth_token', response.data.token);
-  localStorage.setItem('auth_user', JSON.stringify(response.data.user));
   return response.data;
 }
 

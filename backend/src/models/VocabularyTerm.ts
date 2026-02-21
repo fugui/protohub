@@ -3,7 +3,7 @@
  */
 
 import type { VocabularyTermEntity } from 'protohub-shared';
-import { BaseRepository } from '../config/database';
+import { BaseRepository } from '../repositories/BaseRepository';
 import type Database from 'better-sqlite3';
 import { getDatabase } from '../config/db';
 
@@ -12,7 +12,7 @@ export class VocabularyTermRepository extends BaseRepository<VocabularyTermEntit
     super('vocabulary_terms', 'id');
   }
 
-  protected getDb(): Database.Database {
+  public getDb(): Database.Database {
     return getDatabase();
   }
 

@@ -164,8 +164,14 @@ CREATE TABLE IF NOT EXISTS vocabulary_terms (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   term TEXT NOT NULL UNIQUE,
   description TEXT,
+  description_en TEXT,
   category TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  aliases TEXT,
+  similar_terms TEXT,
+  domain TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_vocabulary_terms_category ON vocabulary_terms(category);
+CREATE INDEX IF NOT EXISTS idx_vocabulary_terms_domain ON vocabulary_terms(domain);

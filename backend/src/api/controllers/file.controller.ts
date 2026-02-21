@@ -1,7 +1,6 @@
-/**
- * 文件管理控制器
- */
-
+import type { Request } from 'express';
+import type { CreateFileData, UpdateFileData, GetFilesParams, AuthenticatedRequest } from '../../types';
+import type { SubmitReviewResponse, PaginatedResponse, ProtoFile, ProtoFileDetail } from 'protohub-shared';
 import {
   getFiles as getProtoFiles,
   getFileById as getProtoFileById,
@@ -14,63 +13,66 @@ import {
 import { reviewRepository } from '../../models/Review';
 import { protoFileRepository } from '../../models/ProtoFile';
 import { userRepository } from '../../models/User';
-import { SubmitReviewResponse } from 'protohub-shared';
 
 /**
  * 获取文件列表
  */
-export async function getFiles(params: any) {
-  return await getProtoFiles(params);
+export function getFiles(params: GetFilesParams): PaginatedResponse<ProtoFile> {
+  return getProtoFiles(params);
 }
 
 /**
  * 根据 ID 获取文件
  */
-export async function getFileById(fileId: number) {
-  return await getProtoFileById(fileId);
+export async function getFileById(fileId: number): Promise<ProtoFileDetail> {
+  return getProtoFileById(fileId);
 }
 
 /**
  * 创建文件
  */
-export async function createFile(req: any, data: any) {
-  return await createProtoFile(req, data);
+export async function createFile(req: Request, data: CreateFileData) {
+  return createProtoFile(req, data);
 }
 
 /**
  * 更新文件
  */
-export async function updateFile(fileId: number, data: any, req: any) {
-  return await updateProtoFile(fileId, data, req);
+export async function updateFile(fileId: number, data: UpdateFileData, req: Request) {
+  return updateProtoFile(fileId, data, req as AuthenticatedRequest);
 }
 
 /**
  * 删除文件
  */
-export async function deleteFile(fileId: number, _req: any) {
-  return await deleteProtoFile(fileId);
+export function deleteFile(fileId: number, _req: Request): void {
+  return deleteProtoFile(fileId);
 }
 
 /**
  * 锁定文件
  */
-export async function lockFile(fileId: number, req: any) {
-  return await lockProtoFile(fileId, req);
+export function lockFile(fileId: number, req: Request) {
+  return lockProtoFile(fileId, req as AuthenticatedRequest);
 }
 
 /**
  * 解锁文件
  */
-export async function unlockFile(fileId: number, req: any) {
-  return await unlockProtoFile(fileId, req);
+export function unlockFile(fileId: number, req: Request) {
+  return unlockProtoFile(fileId, req as AuthenticatedRequest);
 }
 
 /**
  * 提交审核
  */
-export async function submitReview(fileId: number, req: any): Promise<SubmitReviewResponse> {
-  const userId = (req.user as any).userId;
-  const file = await getProtoFileById(fileId);
+export function submitReview(fileId: number, req: Request): SubmitReviewResponse {
+  const authReq = req as AuthenticatedRequest;
+  const userId = authReq.user.userId;
+  const file = protoFileRepository.findById(fileId);
+  if (!file) {
+    throw new Error('文件不存在');
+  }
 
   // 创建审核记录
   const reviewId = reviewRepository.create({
@@ -84,25 +86,24 @@ export async function submitReview(fileId: number, req: any): Promise<SubmitRevi
 
   // 更新文件状态为待审核
   protoFileRepository.updateFile(fileId, { status: 'pending_review' });
-  // 实际上文件状态是在 updateFile 中更新的
 
   const reviewEntity = reviewRepository.findById(reviewId);
   if (!reviewEntity) {
     throw new Error('审核记录创建失败');
   }
 
-  const submittedBy = await userRepository.findById(reviewEntity.submitted_by);
-  const reviewedBy = reviewEntity.reviewed_by ? await userRepository.findById(reviewEntity.reviewed_by) : null;
+  const submittedBy = userRepository.findById(reviewEntity.submitted_by);
+  const reviewedBy = reviewEntity.reviewed_by ? userRepository.findById(reviewEntity.reviewed_by) : null;
 
   const review = {
     id: reviewEntity.id,
     file: {
       id: file.id,
       filename: file.filename,
-      packageName: file.packageName,
-      subsystem: file.subsystem,
+      packageName: file.package_name,
+      subsystem: file.subsystem_id,
       status: file.status,
-      currentVersion: file.currentVersion,
+      currentVersion: file.current_version,
       createdBy: submittedBy ? {
         id: submittedBy.id,
         username: submittedBy.username,
@@ -110,11 +111,11 @@ export async function submitReview(fileId: number, req: any): Promise<SubmitRevi
         role: submittedBy.role,
         createdAt: submittedBy.created_at,
       } : undefined,
-      createdAt: file.createdAt,
-      updatedAt: file.updatedAt,
-      locked: file.locked,
-      lockedBy: file.lockedBy || null,
-      lockedAt: file.lockedAt || null,
+      createdAt: file.created_at,
+      updatedAt: file.updated_at,
+      locked: file.locked === 1,
+      lockedBy: file.locked_by ? { id: file.locked_by, username: '', email: '', role: 'developer' as const, createdAt: '' } : null,
+      lockedAt: file.locked_at,
     },
     fileVersion: undefined,
     submittedBy: submittedBy ? {

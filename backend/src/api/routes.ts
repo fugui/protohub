@@ -14,6 +14,7 @@ import { subsystemRoutes } from './routes/subsystem.routes';
 import { checkRoutes } from './routes/check.routes';
 import { dependencyRoutes } from './routes/dependency.routes';
 import { vocabularyRoutes } from './routes/vocabulary.routes';
+import architectureRoutes from './routes/architecture.routes';
 
 /**
  * 注册所有路由
@@ -48,6 +49,9 @@ export function registerRoutes(): Router {
 
   // 词汇管理路由
   router.use('/vocabulary', authMiddleware, vocabularyRoutes);
+
+  // 架构图路由
+  router.use('/architecture', architectureRoutes);
 
   return router;
 }

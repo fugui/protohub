@@ -13,28 +13,23 @@ export class UserRepository extends BaseRepository<UserEntity> {
   /**
    * 根据用户名查找用户
    */
-  async findByUsername(username: string): Promise<UserEntity | undefined> {
+  findByUsername(username: string): UserEntity | undefined {
     return this.findOne({ username });
   }
 
   /**
    * 根据邮箱查找用户
    */
-  async findByEmail(email: string): Promise<UserEntity | undefined> {
+  findByEmail(email: string): UserEntity | undefined {
     return this.findOne({ email });
   }
 
-  /**
-   * 根据ID查找用户
-   */
-  async findById(id: number): Promise<UserEntity | undefined> {
-    return this.findOne({ id });
-  }
+  // 使用基类的 findById
 
   /**
    * 创建新用户
    */
-  async create(data: Omit<UserEntity, 'id' | 'created_at' | 'updated_at'>): Promise<number> {
+  async createUser(data: Omit<UserEntity, 'id' | 'created_at' | 'updated_at'> & { password?: string }): Promise<number> {
     const { username, email, password, password_hash, role } = data;
 
     // 密码哈希 (如果还没被哈希)
@@ -48,7 +43,7 @@ export class UserRepository extends BaseRepository<UserEntity> {
       throw new Error('Password or password_hash is required');
     }
 
-    return await this.insert({
+    const result = this.insert({
       username,
       email,
       password_hash: passwordHash,
@@ -56,27 +51,21 @@ export class UserRepository extends BaseRepository<UserEntity> {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
-  }
-
-  /**
-   * 更新用户信息
-   */
-  async update(id: number, updates: Partial<Omit<UserEntity, 'id'>>): Promise<boolean> {
-    return await super.update(id, updates);
+    return Number(result.lastInsertRowid);
   }
 
   /**
    * 更新用户信息（别名方法）
    */
-  async updateUser(id: number, updates: Partial<Omit<UserEntity, 'id'>>): Promise<boolean> {
-    return this.update(id, updates);
+  updateUser(id: number, updates: Partial<Omit<UserEntity, 'id'>>): void {
+    this.update(id, updates);
   }
 
   /**
    * 验证用户密码
    */
   async validatePassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
-    return await bcrypt.compare(plainPassword, hashedPassword);
+    return bcrypt.compare(plainPassword, hashedPassword);
   }
 }
 
