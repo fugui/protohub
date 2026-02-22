@@ -117,19 +117,23 @@ export function ArchitecturePage() {
           radius: 12,
           lineWidth: 2,
           lineDash: [6, 4],
-          labelFontSize: 14,
+          // 标签显示在分组内部左上角
+          labelText: (d: any) => d.data?.label || d.id,
+          labelFontSize: 13,
           labelFontWeight: 'bold',
-          labelFill: '#d46b08',
-          labelPlacement: 'top',
-          labelOffsetY: 8,
-          fillOpacity: 0.1,
+          labelFill: '#ad6800',
+          labelBackground: true,
+          labelBackgroundFill: 'rgba(255, 247, 230, 0.85)',
+          labelBackgroundRadius: 4,
+          labelPadding: [2, 6],
+          labelPlacement: 'top-left',
+          labelOffsetX: 12,
+          labelOffsetY: 14,
+          fillOpacity: 0.08,
         },
         state: {
-          collapsed: {
-            // 折叠状态样式
-          },
+          collapsed: {},
           dragenter: {
-            // 拖拽进入时的高亮
             stroke: '#ff4d4f',
             lineWidth: 4,
           },
@@ -165,6 +169,15 @@ export function ArchitecturePage() {
           shadow: true,
           shadowColor: '#1890ff',
           shadowBlur: 10,
+        },
+        {
+          type: 'drag-combo',
+          enable: () => editModeRef.current,
+        },
+        {
+          type: 'drag-node',
+          enable: () => editModeRef.current,
+          enableDelegate: true,
         },
         {
           type: 'hover-activate',
@@ -230,7 +243,7 @@ export function ArchitecturePage() {
       }
     });
 
-    graph.on('node:dragend', async (evt: any) => {
+    const handleDragEnd = async (evt: any) => {
       const elementId = evt.target?.id || evt.elementId;
       if (!elementId || !editModeRef.current) return;
 
@@ -244,6 +257,127 @@ export function ArchitecturePage() {
       const canvasPoint = evt.canvas;
       const x = viewportPoint?.x ?? canvasPoint?.x ?? (nodeData as any).x ?? 0;
       const y = viewportPoint?.y ?? canvasPoint?.y ?? (nodeData as any).y ?? 0;
+
+      // 检查是否是被拖拽的子系统
+      if (elementId.startsWith('sub_')) {
+        const pointX = canvasPoint?.x || x;
+        const pointY = canvasPoint?.y || y;
+        let targetComboId: string | null = null;
+
+        // 遍历所有的 Combo 判断子系统是否落入目标范围内
+        const allCombos = graph.getComboData();
+        for (const combo of allCombos) {
+          const comboModel = combo.data || combo;
+          const cx = (combo.style as any)?.x ?? (comboModel as any)?.x ?? 0;
+          const cy = (combo.style as any)?.y ?? (comboModel as any)?.y ?? 0;
+
+          // 预估大小检测 (如果不清楚的话可以假设 combo 为 300x200 的大小)
+          const halfW = 150;
+          const halfH = 100;
+
+          if (
+            pointX >= cx - halfW && pointX <= cx + halfW &&
+            pointY >= cy - halfH && pointY <= cy + halfH
+          ) {
+            targetComboId = combo.id;
+            break;
+          }
+        }
+
+        const currentComboId = (nodeData as any).combo || model?.combo;
+
+        if (targetComboId !== currentComboId) {
+          try {
+            const subId = elementId.replace('sub_', '');
+            const groupId = targetComboId ? parseInt(targetComboId.replace('group_', '')) : null;
+            await api.put(`/architecture/subsystems/${subId}/group`, { groupId });
+            message.success('已移入新分组');
+
+            // 刷新图数据并退出，不需要保存拖拽坐标
+            const data = await fetchArchitectureData();
+            if (data) renderGraph(data);
+            return;
+          } catch (e) {
+            message.error('切换分组失败');
+          }
+        }
+
+        // 网格自动吸附与排序逻辑（同组内排序）
+        const comboId = targetComboId || currentComboId;
+        if (comboId) {
+          const comboObj = graph.getComboData(comboId);
+          if (comboObj) {
+            const allNodesInGraph = graph.getNodeData();
+            const nodesInCombo = allNodesInGraph.filter((n: any) => (n.combo || n.data?.combo) === comboId);
+
+            const draggedNodeIndex = nodesInCombo.findIndex((n: any) => n.id === elementId);
+            if (draggedNodeIndex > -1) {
+              (nodesInCombo[draggedNodeIndex] as any).style.x = x;
+              (nodesInCombo[draggedNodeIndex] as any).style.y = y;
+            }
+
+            const cx = (comboObj.style as any)?.x ?? (comboObj.data as any)?.x ?? 0;
+            const cy = (comboObj.style as any)?.y ?? (comboObj.data as any)?.y ?? 0;
+            const columns = (comboObj as any).data?.columns || 3;
+            const nodeWidth = 160;
+            const nodeHeight = 70;
+            const paddingX = 20;
+            const paddingY = 20;
+            const comboPaddingTop = 40;
+
+            nodesInCombo.sort((a: any, b: any) => {
+              const aY = a.y ?? a.style?.y ?? 0;
+              const bY = b.y ?? b.style?.y ?? 0;
+              const aX = a.x ?? a.style?.x ?? 0;
+              const bX = b.x ?? b.style?.x ?? 0;
+              if (Math.abs(aY - bY) > nodeHeight / 2 + paddingY / 2) {
+                return aY - bY;
+              }
+              return aX - bX;
+            });
+
+            const actualCols = Math.min(nodesInCombo.length, columns);
+            const totalWidth = actualCols * nodeWidth + (actualCols - 1) * paddingX;
+            const startX = cx - totalWidth / 2 + nodeWidth / 2;
+
+            const positionsToSave: any[] = [];
+            const nodesToUpdate: any[] = [];
+
+            nodesInCombo.forEach((n: any, index: number) => {
+              const row = Math.floor(index / columns);
+              const col = index % columns;
+              const gridX = startX + col * (nodeWidth + paddingX);
+              const gridY = cy + comboPaddingTop + row * (nodeHeight + paddingY);
+
+              nodesToUpdate.push({
+                id: n.id,
+                style: { x: gridX, y: gridY }
+              });
+
+              positionsToSave.push({
+                nodeId: n.id,
+                nodeType: 'subsystem',
+                x: gridX,
+                y: gridY,
+                layerLevel: n.data?.layerLevel || n.layerLevel || 3,
+                parentGroupId: parseInt(comboId.replace('group_', ''))
+              });
+            });
+
+            // 实时更新视口上的节点位置
+            if (graph.updateNodeData) {
+              graph.updateNodeData(nodesToUpdate);
+              graph.draw(); // 更新画布视图
+            }
+
+            if (positionsToSave.length > 0) {
+              api.post('/architecture/node-positions', { positions: positionsToSave })
+                .catch((error: any) => console.error('保存组合排序失败:', error));
+            }
+            return;
+          }
+        }
+      }
 
       try {
         const comboId = (nodeData as any).combo;
@@ -262,7 +396,10 @@ export function ArchitecturePage() {
       } catch (error) {
         console.error('保存位置失败:', error);
       }
-    });
+    };
+
+    graph.on('node:dragend', handleDragEnd);
+    graph.on('combo:dragend', handleDragEnd);
 
     // 边点击
     graph.on('edge:click', (evt: any) => {
@@ -310,6 +447,72 @@ export function ArchitecturePage() {
   const renderGraph = (data: ArchitectureGraph) => {
     if (!graphRef.current) return;
 
+    // ----- 新增: 网格布局聚合与计算 -----
+    const nodeWidth = 160;
+    const nodeHeight = 70;
+    const paddingX = 20;
+    const paddingY = 20;
+    const comboPaddingTop = 40;
+
+    const comboNodesMap = new Map<string, ArchitectureNode[]>();
+    data.nodes.forEach(n => {
+      if (n.combo) {
+        if (!comboNodesMap.has(n.combo)) comboNodesMap.set(n.combo, []);
+        comboNodesMap.get(n.combo)!.push(n);
+      }
+    });
+
+    const positionsToSave: any[] = [];
+
+    comboNodesMap.forEach((nodes, comboId) => {
+      const comboObj = data.combos?.find(c => c.id === comboId);
+      const cx = (comboObj as any)?.x ?? 0;
+      const cy = (comboObj as any)?.y ?? 0;
+
+      // 按目前的 x, y 坐标排序（y优先，x其次）
+      nodes.sort((a, b) => {
+        const aY = (a as any).y ?? 0;
+        const bY = (b as any).y ?? 0;
+        const aX = (a as any).x ?? 0;
+        const bX = (b as any).x ?? 0;
+        if (Math.abs(aY - bY) > nodeHeight / 2 + paddingY / 2) {
+          return aY - bY;
+        }
+        return aX - bX;
+      });
+
+      const columns = (comboObj as any)?.data?.columns || 3;
+      const actualCols = Math.min(nodes.length, columns);
+      const totalWidth = actualCols * nodeWidth + (actualCols - 1) * paddingX;
+      const startX = cx - totalWidth / 2 + nodeWidth / 2;
+
+      nodes.forEach((n, index) => {
+        const row = Math.floor(index / columns);
+        const col = index % columns;
+
+        const gridX = startX + col * (nodeWidth + paddingX);
+        const gridY = cy + comboPaddingTop + row * (nodeHeight + paddingY);
+
+        if (Math.abs((n.x ?? 0) - gridX) > 0.5 || Math.abs((n.y ?? 0) - gridY) > 0.5) {
+          positionsToSave.push({
+            nodeId: n.id,
+            nodeType: 'subsystem',
+            x: gridX,
+            y: gridY,
+            layerLevel: n.layerLevel,
+            parentGroupId: parseInt(comboId.replace('group_', ''))
+          });
+        }
+        n.x = gridX;
+        n.y = gridY;
+      });
+    });
+
+    if (positionsToSave.length > 0 && editModeRef.current) {
+      api.post('/architecture/node-positions', { positions: positionsToSave }).catch((e: any) => console.error(e));
+    }
+    // ----------------------------
+
     // 转换子系统节点 - 包含位置信息
     const g6Nodes = data.nodes.map((node: ArchitectureNode) => ({
       id: node.id,
@@ -327,7 +530,11 @@ export function ArchitecturePage() {
     // 转换分组为 Combo - 让 G6 根据内部子系统自动计算位置和大小
     const g6Combos = (data.combos || []).map((combo: ArchitectureCombo) => ({
       id: combo.id,
-      data: combo,
+      data: {
+        ...combo,
+        // 确保 label 字段在 data 中可访问到
+        label: combo.label,
+      },
       // 不设置位置和大小，让 G6 根据内部子系统自动计算
       style: {
         ...(combo.style || {}),
@@ -448,6 +655,7 @@ export function ArchitecturePage() {
         name: values.name,
         layerId: values.layerId,
         color: values.color,
+        columns: values.columns || 3,
       });
       message.success('分组创建成功');
       setCreateGroupModalVisible(false);
@@ -734,6 +942,43 @@ export function ArchitecturePage() {
               </p>
             )}
 
+            <div style={{ marginBottom: 16 }}>
+              <strong>网格列数：</strong>
+              {editMode ? (
+                <Select
+                  value={selectedCombo.data?.columns || 3}
+                  style={{ width: 120, marginLeft: 8 }}
+                  onChange={async (val) => {
+                    try {
+                      const groupId = selectedCombo.id.replace('group_', '');
+                      await api.put(`/architecture/groups/${groupId}`, { columns: val });
+                      message.success('列数设置成功');
+
+                      // 更新本地状态，以便再次编辑时同步
+                      setSelectedCombo(prev => prev ? {
+                        ...prev,
+                        data: { ...(prev.data as any), columns: val }
+                      } : null);
+
+                      // 刷新并重排
+                      const data = await fetchArchitectureData();
+                      if (data) renderGraph(data);
+                    } catch (e) {
+                      message.error('设置失败');
+                    }
+                  }}
+                >
+                  <Option value={1}>1 列</Option>
+                  <Option value={2}>2 列</Option>
+                  <Option value={3}>3 列</Option>
+                  <Option value={4}>4 列</Option>
+                  <Option value={5}>5 列</Option>
+                </Select>
+              ) : (
+                <span style={{ marginLeft: 8 }}>{selectedCombo.data?.columns || 3} 列</span>
+              )}
+            </div>
+
             <h4 style={{ marginTop: 24, marginBottom: 16 }}>
               <FolderOutlined /> 包含的子系统 ({getComboSubsystems(selectedCombo.id).length})
             </h4>
@@ -826,6 +1071,21 @@ export function ArchitecturePage() {
               <Option value="#52c41a"><span style={{ color: '#52c41a' }}>■ 绿色</span></Option>
               <Option value="#fa8c16"><span style={{ color: '#fa8c16' }}>■ 橙色</span></Option>
               <Option value="#722ed1"><span style={{ color: '#722ed1' }}>■ 紫色</span></Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            label="网格列数"
+            name="columns"
+            initialValue={3}
+            tooltip="同组下子系统的排列列数"
+          >
+            <Select>
+              <Option value={1}>1 列</Option>
+              <Option value={2}>2 列</Option>
+              <Option value={3}>3 列</Option>
+              <Option value={4}>4 列</Option>
+              <Option value={5}>5 列</Option>
             </Select>
           </Form.Item>
         </Form>

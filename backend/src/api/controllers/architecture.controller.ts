@@ -34,13 +34,13 @@ export function getGroups(_req: Request, res: Response): void {
 
 export function createGroup(req: Request, res: Response): void {
   try {
-    const { name, layerId, parentGroupId, color, positionX, positionY } = req.body;
+    const { name, layerId, parentGroupId, color, positionX, positionY, columns } = req.body;
     if (!name) {
       res.status(400).json({ error: '名称不能为空' });
       return;
     }
     const group = architectureService.createSubsystemGroup({
-      name, layerId, parentGroupId, color, positionX, positionY
+      name, layerId, parentGroupId, color, positionX, positionY, columns
     });
     res.status(201).json(group);
   } catch (error: any) {
@@ -53,6 +53,17 @@ export function updateGroupPosition(req: Request, res: Response): void {
     const groupId = parseInt(req.params.id);
     const { x, y } = req.body;
     architectureService.updateGroupPosition(groupId, x, y);
+    res.json({ message: '更新成功' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
+export function updateGroupInfo(req: Request, res: Response): void {
+  try {
+    const groupId = parseInt(req.params.id);
+    const { columns, name, color, layerId } = req.body;
+    architectureService.updateGroupInfo(groupId, { columns, name, color, layerId });
     res.json({ message: '更新成功' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

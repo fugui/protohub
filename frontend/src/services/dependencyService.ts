@@ -34,6 +34,14 @@ export async function getImpactAnalysis(fileId: number): Promise<{
 }
 
 /**
+ * 创建子系统
+ */
+export async function createSubsystem(data: { name: string; description?: string; owner?: string }): Promise<Subsystem> {
+  const response = await api.post('/subsystems', data);
+  return response.data;
+}
+
+/**
  * 获取所有子系统
  */
 export async function getAllSubsystems(): Promise<Subsystem[]> {

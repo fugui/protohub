@@ -9,6 +9,7 @@ export interface SubsystemGroupEntity {
   layer_id?: number | null;
   parent_group_id?: number | null;
   color?: string | null;
+  columns: number;
   position_x?: number | null;
   position_y?: number | null;
   width: number;
@@ -55,8 +56,8 @@ export class SubsystemGroupRepository extends BaseRepository<SubsystemGroupEntit
    * 更新位置
    */
   updatePosition(id: number, x: number, y: number): void {
-    this.update(id, { 
-      position_x: x, 
+    this.update(id, {
+      position_x: x,
       position_y: y,
       updated_at: new Date().toISOString()
     });
@@ -66,8 +67,8 @@ export class SubsystemGroupRepository extends BaseRepository<SubsystemGroupEntit
    * 更新尺寸
    */
   updateSize(id: number, width: number, height: number): void {
-    this.update(id, { 
-      width, 
+    this.update(id, {
+      width,
       height,
       updated_at: new Date().toISOString()
     });
@@ -77,7 +78,7 @@ export class SubsystemGroupRepository extends BaseRepository<SubsystemGroupEntit
    * 切换折叠状态
    */
   toggleCollapsed(id: number, collapsed: boolean): void {
-    this.update(id, { 
+    this.update(id, {
       collapsed: collapsed ? 1 : 0,
       updated_at: new Date().toISOString()
     });

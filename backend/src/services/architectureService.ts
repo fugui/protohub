@@ -86,6 +86,7 @@ export interface ArchitectureCombo {
     groupId: number;
     color?: string | null;
     childrenCount: number;
+    columns: number;
     [key: string]: any;
   };
 }
@@ -128,6 +129,7 @@ export function createSubsystemGroup(data: {
   layerId?: number;
   parentGroupId?: number;
   color?: string;
+  columns?: number;
   positionX?: number;
   positionY?: number;
 }): SubsystemGroupEntity {
@@ -136,6 +138,7 @@ export function createSubsystemGroup(data: {
     layer_id: data.layerId || null,
     parent_group_id: data.parentGroupId || null,
     color: data.color || null,
+    columns: data.columns !== undefined ? data.columns : 3,
     position_x: data.positionX || 0,
     position_y: data.positionY || 0,
     width: 300,
@@ -168,6 +171,15 @@ export function toggleGroupCollapsed(groupId: number, collapsed: boolean): void 
 export function deleteSubsystemGroup(groupId: number): void {
   // 删除分组（级联删除成员关联）
   subsystemGroupRepository.delete(groupId);
+}
+
+export function updateGroupInfo(groupId: number, data: { columns?: number, name?: string, color?: string, layerId?: number }): void {
+  const updateData: any = { updated_at: new Date().toISOString() };
+  if (data.columns !== undefined) updateData.columns = data.columns;
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.color !== undefined) updateData.color = data.color;
+  if (data.layerId !== undefined) updateData.layer_id = data.layerId;
+  subsystemGroupRepository.update(groupId, updateData);
 }
 
 // ============================================
@@ -308,15 +320,17 @@ export function buildArchitectureGraph(): ArchitectureGraph {
     const defaultX = 100 + (index % 3) * 300;
     const defaultY = 100 + Math.floor(index / 3) * 250;
 
+    const pos = positionMap.get(`group_${group.id}`);
+
     return {
       id: `group_${group.id}`,
       type: 'combo',
       label: group.name,
       layerLevel: layer?.level || 3,
       collapsed: !!group.collapsed,
-      // 添加位置信息
-      x: group.position_x ?? defaultX,
-      y: group.position_y ?? defaultY,
+      // 优先从 positionMap 取，其次是 group 的原字段，最后是默认值
+      x: pos?.x ?? (group.position_x !== 0 ? group.position_x : null) ?? defaultX,
+      y: pos?.y ?? (group.position_y !== 0 ? group.position_y : null) ?? defaultY,
       style: {
         fill: group.color || '#fff7e6',
         stroke: '#fa8c16',
@@ -326,6 +340,7 @@ export function buildArchitectureGraph(): ArchitectureGraph {
       data: {
         groupId: group.id,
         color: group.color,
+        columns: group.columns || 3,
         childrenCount: getSubsystemsInGroup(group.id).length,
       },
     };

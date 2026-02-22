@@ -58,7 +58,7 @@ export interface ArchitectureCombo {
   data?: {
     groupId: number;
     color?: string | null;
-    childrenCount: number;
+    columns?: number;
     [key: string]: any;
   };
 }
@@ -117,6 +117,7 @@ export async function createSubsystemGroup(data: {
   layerId?: number;
   parentGroupId?: number;
   color?: string;
+  columns?: number;
   positionX?: number;
   positionY?: number;
 }): Promise<any> {
@@ -143,6 +144,21 @@ export async function toggleGroupCollapsed(
   collapsed: boolean
 ): Promise<void> {
   await api.put(`/architecture/groups/${groupId}/collapsed`, { collapsed });
+}
+
+/**
+ * 更新分组信息
+ */
+export async function updateGroupInfo(
+  groupId: number,
+  data: {
+    name?: string;
+    layerId?: number;
+    color?: string;
+    columns?: number;
+  }
+): Promise<void> {
+  await api.put(`/architecture/groups/${groupId}`, data);
 }
 
 /**

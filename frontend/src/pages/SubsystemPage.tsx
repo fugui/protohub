@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { Table, Button, Space, Modal, Form, Input, message, Popconfirm, Card, Descriptions } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, ApartmentOutlined, LogoutOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { getAllSubsystems } from '../services/dependencyService';
+import { getAllSubsystems, createSubsystem } from '../services/dependencyService';
 import { logout } from '../services/authService';
 import { useAuthStore } from '../store';
 import type { Subsystem } from 'protohub-shared';
@@ -14,6 +14,7 @@ import type { Subsystem } from 'protohub-shared';
 const { Column } = Table;
 
 export function SubsystemPage() {
+  const [messageApi, contextHolder] = message.useMessage();
   const [subsystems, setSubsystems] = useState<Subsystem[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -30,7 +31,7 @@ export function SubsystemPage() {
       const data = await getAllSubsystems();
       setSubsystems(data);
     } catch (error: any) {
-      message.error('获取子系统列表失败');
+      messageApi.error('获取子系统列表失败');
     } finally {
       setLoading(false);
     }
@@ -61,28 +62,30 @@ export function SubsystemPage() {
   const handleDelete = async (_id: number) => {
     try {
       // TODO: 调用删除 API
-      message.success('删除成功');
+      messageApi.success('删除成功');
       fetchSubsystems();
     } catch (error: any) {
-      message.error('删除失败');
+      messageApi.error('删除失败');
     }
   };
 
   const handleModalOk = async () => {
     try {
-      await form.validateFields();
+      const values = await form.validateFields();
       if (editingSubsystem) {
         // TODO: 调用更新 API
-        message.success('更新成功');
+        messageApi.success('更新成功');
       } else {
-        // TODO: 调用创建 API
-        message.success('创建成功');
+        await createSubsystem(values);
+        messageApi.success('创建成功');
       }
       setModalVisible(false);
       form.resetFields();
       fetchSubsystems();
     } catch (error: any) {
-      message.error(error.message || '操作失败');
+      if (error && error.message) {
+        messageApi.error(error.message || '操作失败');
+      }
     }
   };
 
@@ -93,6 +96,7 @@ export function SubsystemPage() {
 
   return (
     <div style={{ padding: 24 }}>
+      {contextHolder}
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
         <h1>
           <ApartmentOutlined /> 子系统管理
@@ -180,7 +184,8 @@ export function SubsystemPage() {
           setModalVisible(false);
           form.resetFields();
         }}
-        destroyOnClose
+        destroyOnHidden
+        forceRender
       >
         <Form form={form} layout="vertical">
           <Form.Item

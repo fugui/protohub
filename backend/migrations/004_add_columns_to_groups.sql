@@ -1,0 +1,1 @@
+ALTER TABLE subsystem_groups ADD COLUMN columns INTEGER DEFAULT 3;

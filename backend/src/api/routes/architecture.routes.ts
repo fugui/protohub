@@ -22,6 +22,7 @@ router.get('/groups', architectureController.getGroups);
 router.post('/groups', requireRole('admin'), architectureController.createGroup);
 router.put('/groups/:id/position', requireRole('admin'), architectureController.updateGroupPosition);
 router.put('/groups/:id/collapsed', requireRole('admin'), architectureController.toggleGroupCollapsed);
+router.put('/groups/:id', requireRole('admin'), architectureController.updateGroupInfo);
 router.delete('/groups/:id', requireRole('admin'), architectureController.deleteGroup);
 
 // 分组成员管理
