@@ -73,6 +73,8 @@ export interface ArchitectureCombo {
   label: string;
   layerLevel: number;
   collapsed?: boolean;
+  x?: number;  // 位置 X
+  y?: number;  // 位置 Y
   style?: {
     fill?: string;
     stroke?: string;
@@ -152,8 +154,8 @@ export function createSubsystemGroup(data: {
 }
 
 export function updateGroupPosition(
-  groupId: number, 
-  x: number, 
+  groupId: number,
+  x: number,
   y: number
 ): void {
   subsystemGroupRepository.updatePosition(groupId, x, y);
@@ -173,12 +175,30 @@ export function deleteSubsystemGroup(groupId: number): void {
 // ============================================
 
 export function addSubsystemToGroup(
-  groupId: number, 
+  groupId: number,
   subsystemId: number,
   positionX?: number,
   positionY?: number
 ): void {
   subsystemGroupMemberRepository.addToGroup(groupId, subsystemId, positionX, positionY);
+}
+
+export function updateSubsystemGroup(
+  subsystemId: number,
+  newGroupId: number | null
+): void {
+  // First, get all current groups and remove from them
+  const currentGroups = subsystemGroupMemberRepository.getGroupsForSubsystem(subsystemId);
+  for (const oldGroupId of currentGroups) {
+    if (oldGroupId !== newGroupId) {
+      removeSubsystemFromGroup(oldGroupId, subsystemId);
+    }
+  }
+
+  // Then add to new group if not null and not already in it
+  if (newGroupId !== null && !currentGroups.includes(newGroupId)) {
+    addSubsystemToGroup(newGroupId, subsystemId);
+  }
 }
 
 export function removeSubsystemFromGroup(groupId: number, subsystemId: number): void {
@@ -238,7 +258,7 @@ export function buildArchitectureGraph(): ArchitectureGraph {
 
   // 2. 获取所有子系统
   const subsystems = subsystemRepository.findAll();
-  
+
   // 3. 获取所有分组
   const groups = subsystemGroupRepository.findAll();
 
@@ -259,7 +279,7 @@ export function buildArchitectureGraph(): ArchitectureGraph {
   const deps = dependencyRepository.findAll();
   const depsInMap = new Map<number, number>();
   const depsOutMap = new Map<number, number>();
-  
+
   // 构建文件到子系统的映射
   const fileSubsystemMap = new Map<number, number>();
   files.forEach(f => {
@@ -282,14 +302,21 @@ export function buildArchitectureGraph(): ArchitectureGraph {
   });
 
   // 7. 构建 combos（分组）
-  const combos: ArchitectureCombo[] = groups.map(group => {
+  const combos: ArchitectureCombo[] = groups.map((group, index) => {
     const layer = layers.find(l => l.id === group.layer_id);
+    // 获取分组位置，如果没有则使用默认值
+    const defaultX = 100 + (index % 3) * 300;
+    const defaultY = 100 + Math.floor(index / 3) * 250;
+
     return {
       id: `group_${group.id}`,
       type: 'combo',
       label: group.name,
       layerLevel: layer?.level || 3,
       collapsed: !!group.collapsed,
+      // 添加位置信息
+      x: group.position_x ?? defaultX,
+      y: group.position_y ?? defaultY,
       style: {
         fill: group.color || '#fff7e6',
         stroke: '#fa8c16',
@@ -306,7 +333,7 @@ export function buildArchitectureGraph(): ArchitectureGraph {
 
   // 8. 构建子系统节点，并查询所属分组
   const nodes: ArchitectureNode[] = [];
-  
+
   // 构建子系统到分组的映射
   const subsystemToGroupMap = new Map<number, string>();
   groups.forEach(group => {
@@ -321,7 +348,7 @@ export function buildArchitectureGraph(): ArchitectureGraph {
     const layerIndex = (sub.layer_level || 3) - 1;
     const defaultX = 100 + (index % 5) * 150;
     const defaultY = 100 + layerIndex * 200;
-    
+
     // 获取所属分组的 ID
     const comboId = subsystemToGroupMap.get(sub.id);
 
@@ -357,14 +384,14 @@ export function buildArchitectureGraph(): ArchitectureGraph {
 
     if (sourceSub && targetSub && sourceSub !== targetSub) {
       const edgeKey = `sub_${sourceSub}->sub_${targetSub}`;
-      
+
       if (!edgeMap.has(edgeKey)) {
         const sourceNode = nodes.find(n => n.id === `sub_${sourceSub}`);
         const targetNode = nodes.find(n => n.id === `sub_${targetSub}`);
-        
+
         const sourceLayer = sourceNode?.layerLevel || 3;
         const targetLayer = targetNode?.layerLevel || 3;
-        
+
         let direction: 'down' | 'same' | 'up' = 'same';
         if (sourceLayer > targetLayer) direction = 'down';
         else if (sourceLayer < targetLayer) direction = 'up';
@@ -384,10 +411,10 @@ export function buildArchitectureGraph(): ArchitectureGraph {
 
       const edge = edgeMap.get(edgeKey)!;
       edge.dependencyCount++;
-      
+
       const sourceFile = files.find(f => f.id === dep.source_file_id);
       const targetFile = files.find(f => f.id === dep.target_file_id);
-      
+
       if (sourceFile && targetFile) {
         edge.fileDependencies!.push({
           sourceFile: {
@@ -418,13 +445,13 @@ export function buildArchitectureGraph(): ArchitectureGraph {
 // ============================================
 
 export function validateDependency(
-  sourceId: string, 
+  sourceId: string,
   targetId: string
 ): ValidationResult {
   // 解析 ID
   const sourceMatch = sourceId.match(/sub_(\d+)/);
   const targetMatch = targetId.match(/sub_(\d+)/);
-  
+
   if (!sourceMatch || !targetMatch) {
     return { valid: false, reason: '无效的节点ID', severity: 'error' };
   }
@@ -482,24 +509,24 @@ function checkCircularDependency(sourceId: number, targetId: number): boolean {
   // 简化的循环依赖检测
   const visited = new Set<number>();
   const stack = [targetId];
-  
+
   while (stack.length > 0) {
     const current = stack.pop()!;
     if (current === sourceId) {
       return true; // 发现循环
     }
-    
+
     if (visited.has(current)) continue;
     visited.add(current);
-    
+
     // 获取当前子系统的依赖
     const files = protoFileRepository.findAll().filter(f => f.subsystem_id === current);
     const fileIds = files.map(f => f.id);
-    
-    const deps = dependencyRepository.findAll().filter(d => 
+
+    const deps = dependencyRepository.findAll().filter(d =>
       fileIds.includes(d.target_file_id)
     );
-    
+
     for (const dep of deps) {
       if (dep.source_file_id) {
         const sourceFile = protoFileRepository.findById(dep.source_file_id);
@@ -509,17 +536,17 @@ function checkCircularDependency(sourceId: number, targetId: number): boolean {
       }
     }
   }
-  
+
   return false;
 }
 
 function countSiblingDependencies(subsystemId: number, layer: number): number {
   const files = protoFileRepository.findAll().filter(f => f.subsystem_id === subsystemId);
   const fileIds = files.map(f => f.id);
-  
+
   let count = 0;
   const deps = dependencyRepository.findAll();
-  
+
   for (const dep of deps) {
     if (fileIds.includes(dep.source_file_id || 0)) {
       const targetFile = protoFileRepository.findById(dep.target_file_id);
@@ -531,7 +558,7 @@ function countSiblingDependencies(subsystemId: number, layer: number): number {
       }
     }
   }
-  
+
   return count;
 }
 
@@ -562,7 +589,7 @@ export function getDefaultSnapshot() {
 export function loadSnapshot(snapshotId: number): ArchitectureGraph | null {
   const snapshot = architectureSnapshotRepository.findById(snapshotId);
   if (!snapshot) return null;
-  
+
   return architectureSnapshotRepository.parseData(snapshot);
 }
 

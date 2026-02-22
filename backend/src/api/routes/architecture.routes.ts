@@ -43,5 +43,6 @@ router.put('/snapshots/:id/default', requireRole('admin'), architectureControlle
 
 // 子系统层级管理
 router.put('/subsystems/:id/layer', requireRole('admin'), architectureController.updateSubsystemLayer);
+router.put('/subsystems/:id/group', requireRole('admin'), architectureController.updateSubsystemGroup);
 
 export default router;

@@ -46,6 +46,8 @@ export interface ArchitectureCombo {
   label: string;
   layerLevel: number;
   collapsed?: boolean;
+  x?: number;  // 位置 X
+  y?: number;  // 位置 Y
   style?: {
     fill?: string;
     stroke?: string;

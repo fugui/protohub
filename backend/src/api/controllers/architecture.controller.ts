@@ -190,3 +190,14 @@ export function updateSubsystemLayer(req: Request, res: Response): void {
     res.status(500).json({ error: error.message });
   }
 }
+
+export function updateSubsystemGroup(req: Request, res: Response): void {
+  try {
+    const subsystemId = parseInt(req.params.id);
+    const { groupId } = req.body; // Expects null or number
+    architectureService.updateSubsystemGroup(subsystemId, groupId);
+    res.json({ message: '更新分组成功' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+}

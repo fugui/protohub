@@ -5,8 +5,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Card, Spin, message, Button, Space, Modal, Form, Input, Select, Drawer, List, Tag } from 'antd';
-import { 
-  EditOutlined, 
+import {
+  EditOutlined,
   SaveOutlined,
   ReloadOutlined,
   PlusOutlined,
@@ -14,6 +14,7 @@ import {
   WarningOutlined,
   CheckCircleOutlined,
   FolderOutlined,
+  AppstoreOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { Graph } from '@antv/g6';
@@ -26,23 +27,25 @@ export function ArchitecturePage() {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<any>(null);
-  
+
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [layers, setLayers] = useState<ArchitectureLayer[]>([]);
   const [combos, setCombos] = useState<ArchitectureCombo[]>([]);
-  
+
   const [selectedNode, setSelectedNode] = useState<ArchitectureNode | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<ArchitectureEdge | null>(null);
+  const [selectedCombo, setSelectedCombo] = useState<ArchitectureCombo | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [edgeDrawerVisible, setEdgeDrawerVisible] = useState(false);
-  
+  const [comboDrawerVisible, setComboDrawerVisible] = useState(false);
+
   const [createGroupModalVisible, setCreateGroupModalVisible] = useState(false);
   const [createDependencyModalVisible, setCreateDependencyModalVisible] = useState(false);
   const [pendingEdge, setPendingEdge] = useState<{ source: string; target: string } | null>(null);
   const [selectedSource, setSelectedSource] = useState<string | null>(null);
   const [groupForm] = Form.useForm();
-  
+
   // 使用 ref 跟踪编辑模式状态
   const editModeRef = useRef(editMode);
   useEffect(() => {
@@ -55,7 +58,7 @@ export function ArchitecturePage() {
       setLoading(true);
       const response = await api.get('/architecture/graph');
       const data: ArchitectureGraph = response.data;
-      
+
       setLayers(data.layers);
       setCombos(data.combos || []);
       return data;
@@ -76,7 +79,7 @@ export function ArchitecturePage() {
       container: containerRef.current,
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight || 800,
-      
+
       // 节点配置 - 子系统
       node: {
         type: 'rect',
@@ -106,7 +109,7 @@ export function ArchitecturePage() {
           },
         },
       },
-      
+
       // Combo 配置 - 分组容器
       combo: {
         type: 'rect',
@@ -132,7 +135,7 @@ export function ArchitecturePage() {
           },
         },
       },
-      
+
       // 边配置
       edge: {
         style: {
@@ -147,23 +150,21 @@ export function ArchitecturePage() {
           },
         },
       },
-      
-      // 布局配置
-      layout: {
-        type: 'grid',
-        rows: 3,
-        cols: 5,
-        rowGap: 80,
-        colGap: 60,
-      },
-      
+
+      // 布局配置 - 禁用自动布局
+      layout: false as any,
+
       // 交互
       behaviors: [
         'drag-canvas',
         'zoom-canvas',
+        'collapse-expand-combo',
         {
           type: 'drag-element',
           enable: () => editModeRef.current,
+          shadow: true,
+          shadowColor: '#1890ff',
+          shadowBlur: 10,
         },
         {
           type: 'hover-activate',
@@ -171,7 +172,7 @@ export function ArchitecturePage() {
           state: 'hover',
         },
       ],
-      
+
       plugins: [],
     });
 
@@ -179,10 +180,10 @@ export function ArchitecturePage() {
     graph.on('node:click', (evt: any) => {
       const nodeId = evt.target?.id || evt.elementId;
       if (!nodeId) return;
-      
+
       const nodeData = graph.getNodeData(nodeId);
       if (!nodeData) return;
-      
+
       const model = nodeData.data || nodeData;
 
       if (editMode) {
@@ -204,75 +205,58 @@ export function ArchitecturePage() {
       }
     });
 
-    // Combo 点击 - 折叠/展开
+    // Combo 点击 - 折叠/展开（编辑模式）或显示详情（预览模式）
     graph.on('combo:click', (evt: any) => {
       const comboId = evt.target?.id || evt.elementId;
       if (!comboId) return;
-      
-      // G6 v5: 通过 combo 数据获取折叠状态
+
       const comboData = graph.getComboData(comboId);
-      if (comboData) {
+      if (!comboData) return;
+
+      const model = comboData.data || comboData;
+
+      if (editMode) {
+        // 编辑模式：折叠/展开
         const isCollapsed = comboData.data?.collapsed || false;
-        // 更新数据中的 collapsed 状态，重新渲染
         graph.updateComboData?.([{
           id: comboId,
           data: { ...comboData.data, collapsed: !isCollapsed },
         }]);
-        // 触发重新渲染
         graph.draw();
+      } else {
+        // 预览模式：显示详情
+        setSelectedCombo(model as unknown as ArchitectureCombo);
+        setComboDrawerVisible(true);
       }
     });
 
-    // 拖拽结束 - 检测是否拖入 Combo
-    graph.on('element:dragend', async (evt: any) => {
+    graph.on('node:dragend', async (evt: any) => {
       const elementId = evt.target?.id || evt.elementId;
-      if (!elementId) return;
-      
-      // 只处理子系统节点
-      if (!elementId.startsWith('sub_')) return;
-      
-      const nodeData = graph.getNodeData(elementId);
+      if (!elementId || !editModeRef.current) return;
+
+      if (!elementId.startsWith('sub_') && !elementId.startsWith('group_')) return;
+
+      const nodeData = graph.getNodeData(elementId) || graph.getComboData(elementId);
       if (!nodeData) return;
-      
+
       const model = nodeData.data || nodeData;
-      const x = (nodeData as any).x ?? 0;
-      const y = (nodeData as any).y ?? 0;
-      
-      // 获取拖拽后所在的 Combo
-      const parentComboId = (nodeData as any).combo;
-      
-      if (parentComboId) {
-        // 如果已经在某个 Combo 中，提示已加入分组
-        const comboData = graph.getComboData(parentComboId);
-        if (comboData && editModeRef.current) {
-          const comboName = comboData.data?.label || comboData.data?.name || '分组';
-          message.success(`已将 "${model?.name}" 加入 "${comboName}"`);
-          
-          // 调用后端 API 保存归属关系
-          try {
-            const groupId = parseInt(parentComboId.replace('group_', ''));
-            const subsystemId = parseInt(elementId.replace('sub_', ''));
-            await api.post(`/architecture/groups/${groupId}/members`, {
-              subsystemId,
-              positionX: x,
-              positionY: y,
-            });
-          } catch (error) {
-            console.error('保存分组关系失败:', error);
-          }
-        }
-      }
-      
-      // 保存位置
+      const viewportPoint = evt.viewport;
+      const canvasPoint = evt.canvas;
+      const x = viewportPoint?.x ?? canvasPoint?.x ?? (nodeData as any).x ?? 0;
+      const y = viewportPoint?.y ?? canvasPoint?.y ?? (nodeData as any).y ?? 0;
+
       try {
+        const comboId = (nodeData as any).combo;
+        const parentGroupId = comboId ? parseInt(comboId.replace('group_', '')) : null;
+
         await api.post('/architecture/node-positions', {
           positions: [{
             nodeId: elementId,
-            nodeType: 'subsystem',
+            nodeType: elementId.startsWith('sub_') ? 'subsystem' : 'group',
             x: x,
             y: y,
             layerLevel: model?.layerLevel,
-            parentGroupId: parentComboId,
+            parentGroupId: parentGroupId,
           }]
         });
       } catch (error) {
@@ -280,30 +264,14 @@ export function ArchitecturePage() {
       }
     });
 
-    // 拖拽进入 Combo - 视觉反馈
-    graph.on('combo:dragenter', (evt: any) => {
-      const comboId = evt.combo?.id;
-      if (comboId && editModeRef.current) {
-        graph.setElementState(comboId, 'dragenter', true);
-      }
-    });
-
-    // 拖拽离开 Combo
-    graph.on('combo:dragleave', (evt: any) => {
-      const comboId = evt.combo?.id;
-      if (comboId) {
-        graph.setElementState(comboId, 'dragenter', false);
-      }
-    });
-
     // 边点击
     graph.on('edge:click', (evt: any) => {
       const edgeId = evt.target?.id || evt.elementId;
       if (!edgeId) return;
-      
+
       const edgeData = graph.getEdgeData(edgeId);
       if (!edgeData) return;
-      
+
       const model = edgeData.data || edgeData;
       setSelectedEdge(model as unknown as ArchitectureEdge);
       setEdgeDrawerVisible(true);
@@ -342,22 +310,28 @@ export function ArchitecturePage() {
   const renderGraph = (data: ArchitectureGraph) => {
     if (!graphRef.current) return;
 
-    // 转换子系统节点
+    // 转换子系统节点 - 包含位置信息
     const g6Nodes = data.nodes.map((node: ArchitectureNode) => ({
       id: node.id,
       data: node,
-      combo: node.combo,  // 指定所属 Combo
+      combo: node.combo,
+      // G6 v5: 在 style 中设置位置
       style: {
+        x: node.x ?? 100 + Math.random() * 200,
+        y: node.y ?? 100 + Math.random() * 200,
         fill: node.style?.color || '#e6f7ff',
         stroke: node.style?.borderColor || '#1890ff',
       },
     }));
 
-    // 转换分组为 Combo
+    // 转换分组为 Combo - 让 G6 根据内部子系统自动计算位置和大小
     const g6Combos = (data.combos || []).map((combo: ArchitectureCombo) => ({
       id: combo.id,
       data: combo,
-      style: combo.style,
+      // 不设置位置和大小，让 G6 根据内部子系统自动计算
+      style: {
+        ...(combo.style || {}),
+      },
     }));
 
     // 转换边
@@ -373,12 +347,33 @@ export function ArchitecturePage() {
       },
     }));
 
-    graphRef.current.setData({ 
-      nodes: g6Nodes, 
+    graphRef.current.setData({
+      nodes: g6Nodes,
       edges: g6Edges,
       combos: g6Combos,
     });
     graphRef.current.render();
+
+    // G6 v5: 在渲染后更新 Combo 位置
+    setTimeout(() => {
+      if (!graphRef.current) return;
+
+      (data.combos || []).forEach((combo: ArchitectureCombo, index: number) => {
+        const x = (combo as any).x ?? 150 + (index % 2) * 400;
+        const y = (combo as any).y ?? 150 + Math.floor(index / 2) * 250;
+
+        try {
+          graphRef.current?.updateComboData([{
+            id: combo.id,
+            style: { x, y },
+          }]);
+        } catch (e) {
+          console.warn('更新 Combo 位置失败:', combo.id, e);
+        }
+      });
+
+      graphRef.current.draw();
+    }, 100);
   };
 
   // 验证并创建依赖边
@@ -390,23 +385,23 @@ export function ArchitecturePage() {
         sourceId,
         targetId,
       });
-      
+
       const validation = response.data;
-      
+
       if (!validation.valid) {
         message.error(validation.reason);
         // 清除选中
         setSelectedSource(null);
         return;
       }
-      
+
       if (validation.severity === 'warning') {
         message.warning(validation.reason);
       }
-      
+
       setPendingEdge({ source: sourceId, target: targetId });
       setCreateDependencyModalVisible(true);
-      
+
     } catch (error) {
       message.error('验证依赖失败');
     }
@@ -415,13 +410,13 @@ export function ArchitecturePage() {
   // 创建依赖
   const handleCreateDependency = async () => {
     if (!pendingEdge) return;
-    
+
     try {
       message.success('依赖创建成功（演示）');
       setCreateDependencyModalVisible(false);
       setPendingEdge(null);
       setSelectedSource(null);
-      
+
       // 刷新数据
       const data = await fetchArchitectureData();
       if (data) renderGraph(data);
@@ -464,27 +459,7 @@ export function ArchitecturePage() {
     }
   };
 
-  // 从分组移除子系统
-  const handleRemoveFromGroup = async (subsystem: ArchitectureNode) => {
-    if (!subsystem.parentGroupId) {
-      message.warning('该子系统不在任何分组中');
-      return;
-    }
-    try {
-      const groupId = parseInt(subsystem.parentGroupId.replace('group_', ''));
-      const subsystemId = parseInt(subsystem.id.replace('sub_', ''));
-      await api.delete(`/architecture/groups/${groupId}/members`, {
-        data: { subsystemId },
-      });
-      message.success('已从分组移除');
-      setDrawerVisible(false);
-      // 刷新数据
-      const data = await fetchArchitectureData();
-      if (data) renderGraph(data);
-    } catch (error) {
-      message.error('移除失败');
-    }
-  };
+
 
   // 获取层级颜色
   const getLayerColor = (level: number) => {
@@ -497,6 +472,20 @@ export function ArchitecturePage() {
     if (!comboId) return null;
     const combo = combos.find(c => c.id === comboId);
     return combo?.label || combo?.data?.label;
+  };
+
+  // 获取分组包含的子系统列表
+  const getComboSubsystems = (comboId?: string): ArchitectureNode[] => {
+    if (!comboId) return [];
+    // 从图中获取所有节点，筛选出属于该 combo 的节点
+    const graph = graphRef.current;
+    if (!graph) return [];
+
+    const allNodes = graph.getNodeData();
+    return allNodes
+      .filter((node: any) => node.combo === comboId || node.data?.combo === comboId)
+      .map((node: any) => node.data || node)
+      .filter(Boolean);
   };
 
   return (
@@ -552,24 +541,24 @@ export function ArchitecturePage() {
           </Space>
           {editMode && (
             <Tag color="warning">
-              提示：拖拽子系统到虚线框内可加入分组
+              提示：点击打开侧边栏可修改子系统分组；拖拽子系统块可调整画布位置。
             </Tag>
           )}
         </div>
 
         {/* G6 画布 */}
-        <div 
+        <div
           ref={containerRef}
-          style={{ 
-            width: '100%', 
+          style={{
+            width: '100%',
             height: 'calc(100% - 48px)',
             background: '#fafafa',
           }}
         >
           {loading && (
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
               alignItems: 'center',
               height: '100%'
             }}>
@@ -590,16 +579,68 @@ export function ArchitecturePage() {
         {selectedNode && (
           <div>
             <p><strong>类型：</strong> {selectedNode.type === 'subsystem' ? '子系统' : '分组'}</p>
-            <p><strong>所属层级：</strong> 
-              <Tag color={getLayerColor(selectedNode.layerLevel)}>第 {selectedNode.layerLevel} 层</Tag>
-            </p>
-            {selectedNode.combo && (
-              <p><strong>所属分组：</strong> 
-                <Tag icon={<FolderOutlined />} color="orange">
-                  {getComboName(selectedNode.combo)}
+            <div style={{ marginBottom: 16 }}>
+              <strong>所属层级：</strong>
+              {editMode && selectedNode.type === 'subsystem' ? (
+                <Select
+                  value={selectedNode.layerLevel}
+                  style={{ width: 150, marginLeft: 8 }}
+                  onChange={async (val) => {
+                    try {
+                      const subId = selectedNode.id.replace('sub_', '');
+                      await api.put(`/architecture/subsystems/${subId}/layer`, { layerLevel: val });
+                      message.success('层级修改成功');
+                      setDrawerVisible(false);
+                      const data = await fetchArchitectureData();
+                      if (data) renderGraph(data);
+                    } catch (e) {
+                      message.error('修改层级失败');
+                    }
+                  }}
+                >
+                  {layers.map(l => <Option key={l.id} value={l.level}>{l.name}</Option>)}
+                </Select>
+              ) : (
+                <Tag color={getLayerColor(selectedNode.layerLevel)} style={{ marginLeft: 8 }}>
+                  第 {selectedNode.layerLevel} 层
                 </Tag>
-              </p>
-            )}
+              )}
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <strong>所属分组：</strong>
+              {editMode && selectedNode.type === 'subsystem' ? (
+                <Select
+                  value={selectedNode.combo || ''}
+                  style={{ width: 200, marginLeft: 8 }}
+                  allowClear
+                  placeholder="未分组"
+                  onChange={async (val) => {
+                    try {
+                      const subId = selectedNode.id.replace('sub_', '');
+                      const groupId = val ? parseInt(val.replace('group_', '')) : null;
+                      await api.put(`/architecture/subsystems/${subId}/group`, { groupId });
+                      message.success('分组修改成功');
+                      setDrawerVisible(false);
+                      const data = await fetchArchitectureData();
+                      if (data) renderGraph(data);
+                    } catch (e) {
+                      console.error(e);
+                      message.error('修改分组失败');
+                    }
+                  }}
+                >
+                  {combos.map(c => <Option key={c.id} value={c.id}>{c.label || c.data?.label}</Option>)}
+                </Select>
+              ) : (
+                selectedNode.combo ? (
+                  <Tag icon={<FolderOutlined />} color="orange" style={{ marginLeft: 8 }}>
+                    {getComboName(selectedNode.combo)}
+                  </Tag>
+                ) : <span style={{ marginLeft: 8, color: '#999' }}>未分组</span>
+              )}
+            </div>
+
             {selectedNode.subsystemInfo && (
               <>
                 <p><strong>接口文件数：</strong> {selectedNode.subsystemInfo.fileCount}</p>
@@ -607,21 +648,9 @@ export function ArchitecturePage() {
                 <p><strong>依赖其他数：</strong> {selectedNode.subsystemInfo.dependenciesOut}</p>
               </>
             )}
-            
-            {/* 分组操作按钮 */}
-            {editMode && selectedNode.type === 'subsystem' && selectedNode.combo && (
-              <Button
-                danger
-                block
-                style={{ marginTop: 16 }}
-                onClick={() => handleRemoveFromGroup(selectedNode)}
-              >
-                从分组移除
-              </Button>
-            )}
-            
-            <Button 
-              type="primary" 
+
+            <Button
+              type="primary"
               block
               style={{ marginTop: 24 }}
               onClick={() => {
@@ -679,6 +708,72 @@ export function ArchitecturePage() {
         )}
       </Drawer>
 
+      {/* 分组详情抽屉 */}
+      <Drawer
+        title={
+          <Space>
+            <AppstoreOutlined />
+            <span>{selectedCombo?.label || selectedCombo?.data?.label || '分组详情'}</span>
+          </Space>
+        }
+        placement="right"
+        width={450}
+        onClose={() => setComboDrawerVisible(false)}
+        open={comboDrawerVisible}
+      >
+        {selectedCombo && (
+          <div>
+            <p>
+              <strong>类型：</strong>
+              <Tag color="orange">分组</Tag>
+            </p>
+            {selectedCombo.layerLevel && (
+              <p>
+                <strong>所属层级：</strong>
+                <Tag color={getLayerColor(selectedCombo.layerLevel)}>第 {selectedCombo.layerLevel} 层</Tag>
+              </p>
+            )}
+
+            <h4 style={{ marginTop: 24, marginBottom: 16 }}>
+              <FolderOutlined /> 包含的子系统 ({getComboSubsystems(selectedCombo.id).length})
+            </h4>
+            <List
+              bordered
+              dataSource={getComboSubsystems(selectedCombo.id)}
+              renderItem={(subsystem: ArchitectureNode) => (
+                <List.Item
+                  actions={[
+                    <Button
+                      type="link"
+                      size="small"
+                      onClick={() => {
+                        setComboDrawerVisible(false);
+                        navigate(`/subsystems/${subsystem.id.replace('sub_', '')}`);
+                      }}
+                    >
+                      查看
+                    </Button>
+                  ]}
+                >
+                  <List.Item.Meta
+                    title={subsystem.name}
+                    description={
+                      <Space direction="vertical" size={0}>
+                        <span>{subsystem.subsystemInfo?.fileCount || 0} 个接口文件</span>
+                        <span>
+                          依赖: {subsystem.subsystemInfo?.dependenciesOut || 0} 入 / {subsystem.subsystemInfo?.dependenciesIn || 0} 出
+                        </span>
+                      </Space>
+                    }
+                  />
+                </List.Item>
+              )}
+              locale={{ emptyText: '该分组暂无子系统' }}
+            />
+          </div>
+        )}
+      </Drawer>
+
       {/* 创建依赖确认模态框 */}
       <Modal
         title="创建依赖"
@@ -712,7 +807,7 @@ export function ArchitecturePage() {
           >
             <Input placeholder="如：用户服务组" />
           </Form.Item>
-          
+
           <Form.Item
             label="所属层级"
             name="layerId"
@@ -724,7 +819,7 @@ export function ArchitecturePage() {
               ))}
             </Select>
           </Form.Item>
-          
+
           <Form.Item label="颜色" name="color">
             <Select placeholder="选择颜色">
               <Option value="#1890ff"><span style={{ color: '#1890ff' }}>■ 蓝色</span></Option>

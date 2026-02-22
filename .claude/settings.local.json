@@ -39,7 +39,8 @@
       "Bash(powershell.exe -File:*)",
       "Bash(mkdir:*)",
       "Bash(npm run dev)",
-      "Bash(npx tsx watch:*)"
+      "Bash(npx tsx watch:*)",
+      "WebSearch"
     ]
   }
 }
