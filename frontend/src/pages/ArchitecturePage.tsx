@@ -52,6 +52,13 @@ export function ArchitecturePage() {
     editModeRef.current = editMode;
   }, [editMode]);
 
+  // 使用 ref 存储拖拽时的位置和节点ID，用于移出分组时保持位置
+  const dragPositionRef = useRef<{ nodeId: string; x: number; y: number } | null>(null);
+
+  // 使用 ref 存储待保存的位置，用于防抖批量保存
+  const pendingPositionsRef = useRef<any[]>([]);
+  const savePositionsTimeoutRef = useRef<number | null>(null);
+
   // 获取架构图数据
   const fetchArchitectureData = useCallback(async () => {
     try {
@@ -69,6 +76,35 @@ export function ArchitecturePage() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // 防抖保存位置 - 将多个保存请求合并为一个
+  const debouncedSavePositions = useCallback((positions: any[]) => {
+    // 合并到待保存列表
+    pendingPositionsRef.current = [...pendingPositionsRef.current, ...positions];
+
+    // 清除之前的定时器
+    if (savePositionsTimeoutRef.current) {
+      window.clearTimeout(savePositionsTimeoutRef.current);
+    }
+
+    // 设置新的定时器，500ms 后统一保存
+    savePositionsTimeoutRef.current = window.setTimeout(async () => {
+      const positionsToSave = pendingPositionsRef.current;
+      pendingPositionsRef.current = []; // 清空待保存列表
+
+      if (positionsToSave.length > 0) {
+        try {
+          await api.post('/architecture/node-positions', { positions: positionsToSave });
+        } catch (error: any) {
+          if (error.response?.status === 429) {
+            console.warn('保存位置被限流，已忽略');
+          } else {
+            console.error('保存位置失败:', error);
+          }
+        }
+      }
+    }, 500);
   }, []);
 
   // 初始化 G6 图
@@ -286,19 +322,52 @@ export function ArchitecturePage() {
 
         const currentComboId = (nodeData as any).combo || model?.combo;
 
-        if (targetComboId !== currentComboId) {
+        // 修复：将 undefined 统一为 null，避免 false positive
+        const normalizedCurrentComboId = currentComboId ?? null;
+        const normalizedTargetComboId = targetComboId ?? null;
+
+        if (normalizedTargetComboId !== normalizedCurrentComboId) {
           try {
             const subId = elementId.replace('sub_', '');
             const groupId = targetComboId ? parseInt(targetComboId.replace('group_', '')) : null;
+
+            // 记录拖拽位置和节点ID，用于移出分组时保持位置
+            if (!groupId) {
+              const canvasPoint = evt.canvas;
+              const viewportPoint = evt.viewport;
+              dragPositionRef.current = {
+                nodeId: elementId,
+                x: canvasPoint?.x ?? viewportPoint?.x ?? 0,
+                y: canvasPoint?.y ?? viewportPoint?.y ?? 0,
+              };
+            } else {
+              dragPositionRef.current = null;
+            }
+
             await api.put(`/architecture/subsystems/${subId}/group`, { groupId });
-            message.success('已移入新分组');
+
+            // 如果是移出分组，同时保存位置到后端（使用防抖避免 429）
+            if (!groupId && dragPositionRef.current) {
+              debouncedSavePositions([{
+                nodeId: elementId,
+                nodeType: 'subsystem',
+                x: dragPositionRef.current.x,
+                y: dragPositionRef.current.y,
+                layerLevel: model?.layerLevel,
+                parentGroupId: null,
+              }]);
+            }
+
+            message.success(groupId ? '已移入新分组' : '已移出分组');
 
             // 刷新图数据并退出，不需要保存拖拽坐标
             const data = await fetchArchitectureData();
             if (data) renderGraph(data);
+            dragPositionRef.current = null; // 清空位置缓存
             return;
           } catch (e) {
             message.error('切换分组失败');
+            dragPositionRef.current = null;
           }
         }
 
@@ -371,31 +440,25 @@ export function ArchitecturePage() {
             }
 
             if (positionsToSave.length > 0) {
-              api.post('/architecture/node-positions', { positions: positionsToSave })
-                .catch((error: any) => console.error('保存组合排序失败:', error));
+              debouncedSavePositions(positionsToSave);
             }
             return;
           }
         }
       }
 
-      try {
-        const comboId = (nodeData as any).combo;
-        const parentGroupId = comboId ? parseInt(comboId.replace('group_', '')) : null;
+      // 使用防抖保存位置
+      const comboId = (nodeData as any).combo;
+      const parentGroupId = comboId ? parseInt(comboId.replace('group_', '')) : null;
 
-        await api.post('/architecture/node-positions', {
-          positions: [{
-            nodeId: elementId,
-            nodeType: elementId.startsWith('sub_') ? 'subsystem' : 'group',
-            x: x,
-            y: y,
-            layerLevel: model?.layerLevel,
-            parentGroupId: parentGroupId,
-          }]
-        });
-      } catch (error) {
-        console.error('保存位置失败:', error);
-      }
+      debouncedSavePositions([{
+        nodeId: elementId,
+        nodeType: elementId.startsWith('sub_') ? 'subsystem' : 'group',
+        x: x,
+        y: y,
+        layerLevel: model?.layerLevel,
+        parentGroupId: parentGroupId,
+      }]);
     };
 
     graph.on('node:dragend', handleDragEnd);
@@ -436,12 +499,16 @@ export function ArchitecturePage() {
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      // 清除保存位置的定时器
+      if (savePositionsTimeoutRef.current) {
+        window.clearTimeout(savePositionsTimeoutRef.current);
+      }
       if (graphRef.current) {
         graphRef.current.destroy();
         graphRef.current = null;
       }
     };
-  }, [fetchArchitectureData]);
+  }, [fetchArchitectureData, debouncedSavePositions]);
 
   // 渲染图数据
   const renderGraph = (data: ArchitectureGraph) => {
@@ -509,23 +576,60 @@ export function ArchitecturePage() {
     });
 
     if (positionsToSave.length > 0 && editModeRef.current) {
-      api.post('/architecture/node-positions', { positions: positionsToSave }).catch((e: any) => console.error(e));
+      api.post('/architecture/node-positions', { positions: positionsToSave }).catch((e: any) => {
+        if (e.response?.status === 429) {
+          console.warn('保存位置被限流，已忽略');
+        } else {
+          console.error(e);
+        }
+      });
     }
     // ----------------------------
 
     // 转换子系统节点 - 包含位置信息
-    const g6Nodes = data.nodes.map((node: ArchitectureNode) => ({
-      id: node.id,
-      data: node,
-      combo: node.combo,
-      // G6 v5: 在 style 中设置位置
-      style: {
-        x: node.x ?? 100 + Math.random() * 200,
-        y: node.y ?? 100 + Math.random() * 200,
-        fill: node.style?.color || '#e6f7ff',
-        stroke: node.style?.borderColor || '#1890ff',
-      },
-    }));
+    const g6Nodes = data.nodes.map((node: ArchitectureNode) => {
+      // 判断是否是刚刚移出分组的节点（有拖拽位置缓存且匹配当前节点ID）
+      const isRecentlyRemovedFromCombo = dragPositionRef.current?.nodeId === node.id;
+
+      // 对于没有 combo 的节点（未分组），使用随机位置避免堆叠在原分组位置
+      // 但如果刚刚拖拽移出，则使用拖拽位置
+      // 因为 node.x/y 可能是之前作为分组成员时的相对坐标
+      const hasValidPosition = node.x !== undefined && node.y !== undefined && node.combo;
+
+      let nodeX: number;
+      let nodeY: number;
+
+      if (isRecentlyRemovedFromCombo) {
+        // 使用拖拽时的位置
+        nodeX = dragPositionRef.current!.x;
+        nodeY = dragPositionRef.current!.y;
+      } else if (hasValidPosition) {
+        // 使用保存的位置
+        nodeX = node.x!;
+        nodeY = node.y!;
+      } else {
+        // 使用随机位置
+        nodeX = 200 + Math.random() * 400;
+        nodeY = 200 + Math.random() * 300;
+      }
+
+      const nodeData: any = {
+        id: node.id,
+        data: node,
+        // G6 v5: 在 style 中设置位置
+        style: {
+          x: nodeX,
+          y: nodeY,
+          fill: node.style?.color || '#e6f7ff',
+          stroke: node.style?.borderColor || '#1890ff',
+        },
+      };
+      // 只有当 combo 有值时才设置，确保 null/undefined 不被设置
+      if (node.combo) {
+        nodeData.combo = node.combo;
+      }
+      return nodeData;
+    });
 
     // 转换分组为 Combo - 让 G6 根据内部子系统自动计算位置和大小
     const g6Combos = (data.combos || []).map((combo: ArchitectureCombo) => ({
@@ -553,6 +657,9 @@ export function ArchitecturePage() {
         lineWidth: edge.valid ? 2 : 3,
       },
     }));
+
+    // 清除现有数据，确保 combo 关联正确更新（特别是节点移出分组时）
+    graphRef.current.clear();
 
     graphRef.current.setData({
       nodes: g6Nodes,

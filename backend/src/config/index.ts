@@ -37,7 +37,7 @@ export function createApp(): Express {
 
   // 速率限制
   const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 分钟
+    windowMs: 60 * 1000, // 1 分钟
     max: 100, // 每个窗口最多 100 个请求
     message: '请求过于频繁，请稍后再试',
   });
