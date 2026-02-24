@@ -673,7 +673,6 @@ export function ArchitecturePage() {
       const existingEdgeIds = new Set(existingData.edges?.map((e: any) => e.id) || []);
 
       const newNodeIds = new Set(g6Nodes.map(n => n.id));
-      const newComboIds = new Set(g6Combos.map(c => c.id));
       const newEdgeIds = new Set(g6Edges.map(e => e.id));
 
       // 找出新增和删除的节点/边/combo
