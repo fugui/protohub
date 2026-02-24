@@ -7,7 +7,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Descriptions, Button, Space, message, Input, Tag, Spin, Breadcrumb, Select, Form, Tabs, Upload } from 'antd';
 import { LockOutlined, UnlockOutlined, EditOutlined, ArrowLeftOutlined, CheckOutlined, SaveOutlined, InboxOutlined, GithubOutlined, FileTextOutlined, CloudUploadOutlined } from '@ant-design/icons';
 import { getFileById, updateFile, lockFile, unlockFile, submitReview, createFile } from '../services/fileService';
-import { getAllSubsystems } from '../services/dependencyService';
+import { getAllSubsystems } from '../services/subsystemService';
 import { createGitRepo, importFromGit } from '../services/gitService';
 import { useAuthStore } from '../store';
 import type { ProtoFileDetail, Subsystem } from 'protohub-shared';

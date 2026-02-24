@@ -140,8 +140,8 @@ export function DashboardPage() {
           <Button size="large" onClick={() => navigate('/reviews')}>
             <CheckSquareOutlined /> 审核工作台
           </Button>
-          <Button size="large" onClick={() => navigate('/dependencies')}>
-            <ApartmentOutlined /> 依赖关系图
+          <Button size="large" onClick={() => navigate('/architecture')}>
+            <ApartmentOutlined /> 架构全景图
           </Button>
           <Button size="large" onClick={() => navigate('/subsystems')}>
             <PartitionOutlined /> 子系统管理

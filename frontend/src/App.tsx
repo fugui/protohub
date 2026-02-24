@@ -7,7 +7,6 @@ import { useAuthStore } from './store';
 import { LoginPage } from './pages/LoginPage';
 import { FileListPage } from './pages/FileListPage';
 import { ReviewPage } from './pages/ReviewPage';
-import { DependencyGraphPage } from './pages/DependencyGraphPage';
 import { SubsystemPage } from './pages/SubsystemPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { FileDetailPage } from './pages/FileDetailPage';
@@ -33,7 +32,6 @@ function App() {
           <Route path='/checks/:id' element={<CheckReportPage />} />
           <Route path='/vocabulary' element={<VocabularyPage />} />
           <Route path='/reviews' element={<ReviewPage />} />
-          <Route path='/dependencies' element={<DependencyGraphPage />} />
           <Route path='/architecture' element={<ArchitecturePage />} />
           <Route path='/subsystems' element={<SubsystemPage />} />
         </Route>

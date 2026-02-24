@@ -67,8 +67,8 @@ export function FileListPage() {
           <Button icon={<CheckSquareOutlined />} onClick={() => navigate('/reviews')}>
             审核工作台
           </Button>
-          <Button icon={<ApartmentOutlined />} onClick={() => navigate('/dependencies')}>
-            依赖关系图
+          <Button icon={<ApartmentOutlined />} onClick={() => navigate('/architecture')}>
+            架构全景图
           </Button>
           <Button icon={<PartitionOutlined />} onClick={() => navigate('/subsystems')}>
             子系统管理

@@ -55,11 +55,6 @@ export function MainLayout() {
             label: '审核工作台',
         },
         {
-            key: '/dependencies',
-            icon: <ApartmentOutlined />,
-            label: '依赖关系图',
-        },
-        {
             key: '/architecture',
             icon: <ApartmentOutlined />,
             label: '架构全景图',

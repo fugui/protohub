@@ -12,7 +12,6 @@ import { reviewRoutes } from './routes/review.routes';
 import { gitRoutes } from './routes/git.routes';
 import { subsystemRoutes } from './routes/subsystem.routes';
 import { checkRoutes } from './routes/check.routes';
-import { dependencyRoutes } from './routes/dependency.routes';
 import { vocabularyRoutes } from './routes/vocabulary.routes';
 import architectureRoutes from './routes/architecture.routes';
 
@@ -43,9 +42,6 @@ export function registerRoutes(): Router {
 
   // 检查路由
   router.use('/checks', authMiddleware, checkRoutes);
-
-  // 依赖关系路由
-  router.use('/dependencies', authMiddleware, dependencyRoutes);
 
   // 词汇管理路由
   router.use('/vocabulary', authMiddleware, vocabularyRoutes);

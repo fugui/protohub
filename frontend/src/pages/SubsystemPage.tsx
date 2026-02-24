@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { Table, Button, Space, Modal, Form, Input, message, Popconfirm, Card, Descriptions } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, ApartmentOutlined, LogoutOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { getAllSubsystems, createSubsystem } from '../services/dependencyService';
+import { getAllSubsystems, createSubsystem } from '../services/subsystemService';
 import { logout } from '../services/authService';
 import { useAuthStore } from '../store';
 import type { Subsystem } from 'protohub-shared';
