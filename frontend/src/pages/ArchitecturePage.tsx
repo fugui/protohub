@@ -59,10 +59,9 @@ export function ArchitecturePage() {
   const pendingPositionsRef = useRef<any[]>([]);
   const savePositionsTimeoutRef = useRef<number | null>(null);
 
-  // 获取架构图数据
+  // 获取架构图数据（不控制 loading，由调用方控制）
   const fetchArchitectureData = useCallback(async () => {
     try {
-      setLoading(true);
       const response = await api.get('/architecture/graph');
       const data: ArchitectureGraph = response.data;
 
@@ -73,8 +72,6 @@ export function ArchitecturePage() {
       message.error('获取架构图失败');
       console.error(error);
       return null;
-    } finally {
-      setLoading(false);
     }
   }, []);
 
@@ -163,8 +160,9 @@ export function ArchitecturePage() {
           labelBackgroundRadius: 4,
           labelPadding: [2, 6],
           labelPlacement: 'top-left',
-          labelOffsetX: 12,
-          labelOffsetY: 14,
+          labelOffsetX: 8,
+          labelOffsetY: 12,
+          labelTextAlign: 'left',
           fillOpacity: 0.08,
         },
         state: {
@@ -479,11 +477,17 @@ export function ArchitecturePage() {
 
     graphRef.current = graph;
 
-    // 加载数据
+    // 加载数据并渲染
+    setLoading(true);
     fetchArchitectureData().then(data => {
       if (data && graphRef.current) {
         renderGraph(data);
       }
+    }).finally(() => {
+      // 使用 requestAnimationFrame 确保渲染完成后再隐藏 loading
+      requestAnimationFrame(() => {
+        setLoading(false);
+      });
     });
 
     // 窗口大小变化
@@ -658,18 +662,69 @@ export function ArchitecturePage() {
       },
     }));
 
-    // 清除现有数据，确保 combo 关联正确更新（特别是节点移出分组时）
-    graphRef.current.clear();
+    // 检查是否已有数据，避免不必要的 clear
+    const existingData = graphRef.current.getData();
+    const hasExistingData = existingData && (existingData.nodes?.length > 0 || existingData.combos?.length > 0);
 
-    graphRef.current.setData({
-      nodes: g6Nodes,
-      edges: g6Edges,
-      combos: g6Combos,
-    });
-    graphRef.current.render();
+    if (hasExistingData) {
+      // 增量更新：只更新变化的数据，避免闪烁
+      const existingNodeIds = new Set(existingData.nodes?.map((n: any) => n.id) || []);
+      const existingComboIds = new Set(existingData.combos?.map((c: any) => c.id) || []);
+      const existingEdgeIds = new Set(existingData.edges?.map((e: any) => e.id) || []);
 
-    // G6 v5: 在渲染后更新 Combo 位置
-    setTimeout(() => {
+      const newNodeIds = new Set(g6Nodes.map(n => n.id));
+      const newComboIds = new Set(g6Combos.map(c => c.id));
+      const newEdgeIds = new Set(g6Edges.map(e => e.id));
+
+      // 找出新增和删除的节点/边/combo
+      const nodesToAdd = g6Nodes.filter(n => !existingNodeIds.has(n.id));
+      const nodesToUpdate = g6Nodes.filter(n => existingNodeIds.has(n.id));
+      const nodesToRemove = (existingData.nodes || []).filter((n: any) => !newNodeIds.has(n.id));
+
+      const combosToAdd = g6Combos.filter(c => !existingComboIds.has(c.id));
+      const combosToUpdate = g6Combos.filter(c => existingComboIds.has(c.id));
+
+      const edgesToAdd = g6Edges.filter(e => !existingEdgeIds.has(e.id));
+      const edgesToRemove = (existingData.edges || []).filter((e: any) => !newEdgeIds.has(e.id));
+
+      // 执行增量更新
+      if (nodesToRemove.length > 0) {
+        graphRef.current.removeNodeData(nodesToRemove.map((n: any) => n.id));
+      }
+      if (edgesToRemove.length > 0) {
+        graphRef.current.removeEdgeData(edgesToRemove.map((e: any) => e.id));
+      }
+      if (nodesToAdd.length > 0) {
+        graphRef.current.addNodeData(nodesToAdd);
+      }
+      if (edgesToAdd.length > 0) {
+        graphRef.current.addEdgeData(edgesToAdd);
+      }
+      if (combosToAdd.length > 0) {
+        graphRef.current.addComboData(combosToAdd);
+      }
+
+      // 更新现有节点和 combo 的数据和位置
+      if (nodesToUpdate.length > 0) {
+        graphRef.current.updateNodeData(nodesToUpdate);
+      }
+      if (combosToUpdate.length > 0) {
+        graphRef.current.updateComboData(combosToUpdate);
+      }
+
+      graphRef.current.draw();
+    } else {
+      // 首次渲染：使用 setData
+      graphRef.current.setData({
+        nodes: g6Nodes,
+        edges: g6Edges,
+        combos: g6Combos,
+      });
+      graphRef.current.render();
+    }
+
+    // G6 v5: 在渲染后更新 Combo 位置（仅在首次渲染或 combo 位置变化时）
+    requestAnimationFrame(() => {
       if (!graphRef.current) return;
 
       (data.combos || []).forEach((combo: ArchitectureCombo, index: number) => {
@@ -687,7 +742,7 @@ export function ArchitecturePage() {
       });
 
       graphRef.current.draw();
-    }, 100);
+    });
   };
 
   // 验证并创建依赖边
