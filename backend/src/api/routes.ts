@@ -10,7 +10,7 @@ import { versionRoutes } from './routes/version.routes';
 import { userRoutes } from './routes/user.routes';
 import { reviewRoutes } from './routes/review.routes';
 import { gitRoutes } from './routes/git.routes';
-import { subsystemRoutes } from './routes/subsystem.routes';
+import { functionModuleRoutes } from './routes/subsystem.routes';
 import { checkRoutes } from './routes/check.routes';
 import { vocabularyRoutes } from './routes/vocabulary.routes';
 import architectureRoutes from './routes/architecture.routes';
@@ -37,8 +37,8 @@ export function registerRoutes(): Router {
   // Git 仓库路由
   router.use('/git-repos', authMiddleware, gitRoutes);
 
-  // 子系统路由
-  router.use('/subsystems', optionalAuth, subsystemRoutes);
+  // 功能模块路由
+  router.use('/function-modules', optionalAuth, functionModuleRoutes);
 
   // 检查路由
   router.use('/checks', authMiddleware, checkRoutes);

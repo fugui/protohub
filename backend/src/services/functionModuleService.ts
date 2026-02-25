@@ -1,15 +1,15 @@
 /**
- * 子系统服务
+ * 功能模块服务
  */
 
-import { subsystemRepository } from '../models/Subsystem';
-import type { Subsystem } from 'protohub-shared';
+import { functionModuleRepository } from '../models/FunctionModule';
+import type { FunctionModule } from 'protohub-shared';
 
 /**
- * 获取所有子系统
+ * 获取所有功能模块
  */
-export function getSubsystems(): Subsystem[] {
-  const entities = subsystemRepository.findAll();
+export function getFunctionModules(): FunctionModule[] {
+  const entities = functionModuleRepository.findAll();
   return entities.map((entity) => ({
     id: entity.id,
     name: entity.name,
@@ -20,10 +20,10 @@ export function getSubsystems(): Subsystem[] {
 }
 
 /**
- * 根据 ID 获取子系统
+ * 根据 ID 获取功能模块
  */
-export function getSubsystemById(id: number): Subsystem | undefined {
-  const entity = subsystemRepository.findById(id);
+export function getFunctionModuleById(id: number): FunctionModule | undefined {
+  const entity = functionModuleRepository.findById(id);
   if (!entity) {
     return undefined;
   }
@@ -38,19 +38,19 @@ export function getSubsystemById(id: number): Subsystem | undefined {
 }
 
 /**
- * 创建子系统
+ * 创建功能模块
  */
-export function createSubsystem(
+export function createFunctionModule(
   data: { name: string; description?: string; owner?: string }
-): Subsystem {
-  const id = subsystemRepository.create({
+): FunctionModule {
+  const id = functionModuleRepository.create({
     name: data.name,
     description: data.description || null,
     owner: data.owner || null,
     created_at: new Date().toISOString(),
   });
 
-  const entity = subsystemRepository.findById(id);
+  const entity = functionModuleRepository.findById(id);
   return {
     id: entity!.id,
     name: entity!.name,

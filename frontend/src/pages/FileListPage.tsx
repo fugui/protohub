@@ -70,8 +70,8 @@ export function FileListPage() {
           <Button icon={<ApartmentOutlined />} onClick={() => navigate('/architecture')}>
             架构全景图
           </Button>
-          <Button icon={<PartitionOutlined />} onClick={() => navigate('/subsystems')}>
-            子系统管理
+          <Button icon={<PartitionOutlined />} onClick={() => navigate('/function-modules')}>
+            功能模块管理
           </Button>
           <Button icon={<LogoutOutlined />} onClick={handleLogout}>
             退出

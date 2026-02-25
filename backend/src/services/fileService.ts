@@ -7,7 +7,7 @@ import path from 'path';
 import { protoFileRepository } from '../models/ProtoFile';
 import { fileVersionRepository } from '../models/FileVersion';
 import { dependencyRepository } from '../models/Dependency';
-import { subsystemRepository } from '../models/Subsystem';
+import { functionModuleRepository } from '../models/FunctionModule';
 import { ProtoFile, PaginatedResponse } from 'protohub-shared';
 import { NotFoundError, ConflictError, ValidationError } from '../middlewares/errorHandler';
 import { parseProtoFile, extractDependencies } from '../utils/protoParser';
@@ -30,14 +30,14 @@ async function ensureStorageDir(fileId: number): Promise<string> {
 export function getFiles(params: {
   page: number;
   pageSize: number;
-  subsystemId?: number;
+  functionModuleId?: number;
   status?: string;
   search?: string;
 }): PaginatedResponse<ProtoFile> {
   let query: any = {};
 
-  if (params.subsystemId !== undefined) {
-    query.subsystem_id = params.subsystemId;
+  if (params.functionModuleId !== undefined) {
+    query.function_module_id = params.functionModuleId;
   }
 
   if (params.status) {
@@ -89,14 +89,14 @@ export async function getFileById(fileId: number): Promise<ProtoFile & { content
  */
 export async function createFile(
   req: any,
-  data: { subsystemId: number; filename?: string; content?: string }
+  data: { functionModuleId: number; filename?: string; content?: string }
 ): Promise<ProtoFile> {
   const userId = (req.user as any).userId;
 
-  // 验证子系统是否存在
-  const subsystem = subsystemRepository.findById(data.subsystemId);
-  if (!subsystem) {
-    throw new ValidationError('子系统不存在');
+  // 验证功能模块是否存在
+  const functionModule = functionModuleRepository.findById(data.functionModuleId);
+  if (!functionModule) {
+    throw new ValidationError('功能模块不存在');
   }
 
   // 获取文件内容
@@ -134,7 +134,7 @@ export async function createFile(
     filename: filename || 'unnamed.proto',
     file_path: '', // 稍后设置
     package_name: parsed.packageName,
-    subsystem_id: data.subsystemId,
+    function_module_id: data.functionModuleId,
     status: 'draft',
     current_version: 1,
     created_by: userId,

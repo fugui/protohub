@@ -36,16 +36,17 @@ CREATE TABLE IF NOT EXISTS git_repos (
 
 CREATE INDEX IF NOT EXISTS idx_git_repos_user_id ON git_repos(user_id);
 
--- 创建 subsystems 表
-CREATE TABLE IF NOT EXISTS subsystems (
+-- 创建 function_modules 表（功能模块，原 subsystems）
+CREATE TABLE IF NOT EXISTS function_modules (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL UNIQUE,
   description TEXT,
   owner TEXT,
+  layer_level INTEGER DEFAULT 3,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_subsystems_name ON subsystems(name);
+CREATE INDEX IF NOT EXISTS idx_function_modules_name ON function_modules(name);
 
 -- 创建 proto_files 表
 CREATE TABLE IF NOT EXISTS proto_files (
@@ -53,7 +54,7 @@ CREATE TABLE IF NOT EXISTS proto_files (
   filename TEXT NOT NULL,
   file_path TEXT NOT NULL,
   package_name TEXT NOT NULL,
-  subsystem_id INTEGER,
+  function_module_id INTEGER,
   git_repo_id INTEGER,
   git_file_path TEXT,
   status TEXT NOT NULL CHECK(status IN ('draft', 'pending_review', 'approved', 'rejected')),
@@ -64,14 +65,14 @@ CREATE TABLE IF NOT EXISTS proto_files (
   locked INTEGER NOT NULL DEFAULT 0,
   locked_by INTEGER,
   locked_at TEXT,
-  FOREIGN KEY (subsystem_id) REFERENCES subsystems(id) ON DELETE SET NULL,
+  FOREIGN KEY (function_module_id) REFERENCES function_modules(id) ON DELETE SET NULL,
   FOREIGN KEY (git_repo_id) REFERENCES git_repos(id) ON DELETE SET NULL,
   FOREIGN KEY (created_by) REFERENCES users(id),
   FOREIGN KEY (locked_by) REFERENCES users(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_proto_files_status ON proto_files(status);
-CREATE INDEX IF NOT EXISTS idx_proto_files_subsystem ON proto_files(subsystem_id);
+CREATE INDEX IF NOT EXISTS idx_proto_files_function_module ON proto_files(function_module_id);
 CREATE INDEX IF NOT EXISTS idx_proto_files_git_repo ON proto_files(git_repo_id);
 CREATE INDEX IF NOT EXISTS idx_proto_files_locked ON proto_files(locked);
 
@@ -146,17 +147,17 @@ CREATE INDEX IF NOT EXISTS idx_violations_rule_type ON violations(rule_type);
 CREATE TABLE IF NOT EXISTS dependencies (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   source_file_id INTEGER,
-  source_subsystem_id INTEGER,
+  source_function_module_id INTEGER,
   target_file_id INTEGER NOT NULL,
   dependency_type TEXT NOT NULL DEFAULT 'import',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (source_file_id) REFERENCES proto_files(id) ON DELETE CASCADE,
-  FOREIGN KEY (source_subsystem_id) REFERENCES subsystems(id) ON DELETE CASCADE,
+  FOREIGN KEY (source_function_module_id) REFERENCES function_modules(id) ON DELETE CASCADE,
   FOREIGN KEY (target_file_id) REFERENCES proto_files(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_dependencies_source_file ON dependencies(source_file_id);
-CREATE INDEX IF NOT EXISTS idx_dependencies_source_sub ON dependencies(source_subsystem_id);
+CREATE INDEX IF NOT EXISTS idx_dependencies_source_func_mod ON dependencies(source_function_module_id);
 CREATE INDEX IF NOT EXISTS idx_dependencies_target ON dependencies(target_file_id);
 
 -- 创建 vocabulary_terms 表
@@ -175,3 +176,103 @@ CREATE TABLE IF NOT EXISTS vocabulary_terms (
 
 CREATE INDEX IF NOT EXISTS idx_vocabulary_terms_category ON vocabulary_terms(category);
 CREATE INDEX IF NOT EXISTS idx_vocabulary_terms_domain ON vocabulary_terms(domain);
+
+-- ============================================
+-- 架构全景图表结构
+-- ============================================
+
+-- 1. 架构层级定义表
+CREATE TABLE IF NOT EXISTS architecture_layers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  level INTEGER NOT NULL UNIQUE,
+  color TEXT,
+  description TEXT,
+  sort_order INTEGER DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- 2. 子系统表（支持嵌套，原 subsystem_groups）
+CREATE TABLE IF NOT EXISTS subsystems (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  layer_id INTEGER,
+  parent_subsystem_id INTEGER,
+  color TEXT,
+  position_x REAL,
+  position_y REAL,
+  width REAL DEFAULT 300,
+  height REAL DEFAULT 200,
+  collapsed BOOLEAN DEFAULT 0,
+  columns INTEGER DEFAULT 3,
+  created_by INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (layer_id) REFERENCES architecture_layers(id),
+  FOREIGN KEY (parent_subsystem_id) REFERENCES subsystems(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_subsystems_layer ON subsystems(layer_id);
+CREATE INDEX IF NOT EXISTS idx_subsystems_parent ON subsystems(parent_subsystem_id);
+
+-- 3. 子系统与功能模块关联表（原 subsystem_group_members）
+CREATE TABLE IF NOT EXISTS subsystem_members (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  subsystem_id INTEGER NOT NULL,
+  function_module_id INTEGER NOT NULL,
+  position_x REAL,
+  position_y REAL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (subsystem_id) REFERENCES subsystems(id) ON DELETE CASCADE,
+  FOREIGN KEY (function_module_id) REFERENCES function_modules(id) ON DELETE CASCADE,
+  UNIQUE(subsystem_id, function_module_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_subsystem_members_subsystem ON subsystem_members(subsystem_id);
+CREATE INDEX IF NOT EXISTS idx_subsystem_members_func_mod ON subsystem_members(function_module_id);
+
+-- 4. 架构图节点位置表
+CREATE TABLE IF NOT EXISTS architecture_node_positions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  node_id TEXT NOT NULL UNIQUE,
+  node_type TEXT NOT NULL,
+  x REAL NOT NULL,
+  y REAL NOT NULL,
+  width REAL DEFAULT 120,
+  height REAL DEFAULT 60,
+  layer_level INTEGER,
+  parent_subsystem_id INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (parent_subsystem_id) REFERENCES subsystems(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_anp_layer ON architecture_node_positions(layer_level);
+CREATE INDEX IF NOT EXISTS idx_anp_subsystem ON architecture_node_positions(parent_subsystem_id);
+
+-- 5. 架构图快照表
+CREATE TABLE IF NOT EXISTS architecture_snapshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  data TEXT NOT NULL,
+  is_default BOOLEAN DEFAULT 0,
+  is_locked BOOLEAN DEFAULT 0,
+  created_by INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_arch_snapshots_default ON architecture_snapshots(is_default);
+
+-- 6. 依赖验证规则表
+CREATE TABLE IF NOT EXISTS architecture_rules (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  rule_type TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  config TEXT,
+  is_enabled BOOLEAN DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

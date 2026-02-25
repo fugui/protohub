@@ -13,7 +13,7 @@ export interface ProtoFile {
   filename: string;
   filePath: string;
   packageName: string;
-  subsystemId?: number;
+  functionModuleId?: number;
   gitRepoId?: number;
   gitFilePath?: string;
   status: 'draft' | 'pending_review' | 'approved' | 'rejected';
@@ -76,12 +76,28 @@ export interface Dependency {
   createdAt: string;
 }
 
-export interface Subsystem {
+export interface FunctionModule {
   id: number;
   name: string;
   description?: string;
   owner?: string;
   createdAt: string;
+}
+
+export interface Subsystem {
+  id: number;
+  name: string;
+  layerId?: number;
+  parentSubsystemId?: number;
+  color?: string;
+  columns: number;
+  positionX?: number;
+  positionY?: number;
+  width: number;
+  height: number;
+  collapsed: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface GitRepo {

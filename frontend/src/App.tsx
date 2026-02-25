@@ -7,7 +7,7 @@ import { useAuthStore } from './store';
 import { LoginPage } from './pages/LoginPage';
 import { FileListPage } from './pages/FileListPage';
 import { ReviewPage } from './pages/ReviewPage';
-import { SubsystemPage } from './pages/SubsystemPage';
+import { FunctionModulePage } from './pages/FunctionModulePage';
 import { DashboardPage } from './pages/DashboardPage';
 import { FileDetailPage } from './pages/FileDetailPage';
 import { CheckReportPage } from './pages/CheckReportPage';
@@ -33,7 +33,7 @@ function App() {
           <Route path='/vocabulary' element={<VocabularyPage />} />
           <Route path='/reviews' element={<ReviewPage />} />
           <Route path='/architecture' element={<ArchitecturePage />} />
-          <Route path='/subsystems' element={<SubsystemPage />} />
+          <Route path='/function-modules' element={<FunctionModulePage />} />
         </Route>
       </Routes>
     </Router>

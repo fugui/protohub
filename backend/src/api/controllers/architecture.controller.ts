@@ -25,7 +25,7 @@ export function getLayers(_req: Request, res: Response): void {
 
 export function getGroups(_req: Request, res: Response): void {
   try {
-    const groups = architectureService.getSubsystemGroups();
+    const groups = architectureService.getSubsystems();
     res.json(groups);
   } catch (error) {
     res.status(500).json({ error: '获取分组失败' });
@@ -95,7 +95,7 @@ export function addToGroup(req: Request, res: Response): void {
   try {
     const groupId = parseInt(req.params.id);
     const { subsystemId, positionX, positionY } = req.body;
-    architectureService.addSubsystemToGroup(groupId, subsystemId, positionX, positionY);
+    architectureService.addToSubsystem(groupId, subsystemId, positionX, positionY);
     res.json({ message: '添加成功' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -106,7 +106,7 @@ export function removeFromGroup(req: Request, res: Response): void {
   try {
     const groupId = parseInt(req.params.id);
     const { subsystemId } = req.body;
-    architectureService.removeSubsystemFromGroup(groupId, subsystemId);
+    architectureService.removeFromSubsystem(groupId, subsystemId);
     res.json({ message: '移除成功' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -206,8 +206,20 @@ export function updateSubsystemGroup(req: Request, res: Response): void {
   try {
     const subsystemId = parseInt(req.params.id);
     const { groupId } = req.body; // Expects null or number
-    architectureService.updateSubsystemGroup(subsystemId, groupId);
+    // Note: updateSubsystemGroup was renamed to updateFunctionModuleSubsystem in service
+    architectureService.updateFunctionModuleSubsystem(subsystemId, groupId);
     res.json({ message: '更新分组成功' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
+export function updateFunctionModuleSubsystem(req: Request, res: Response): void {
+  try {
+    const functionModuleId = parseInt(req.params.id);
+    const { subsystemId } = req.body; // Expects null or number
+    architectureService.updateFunctionModuleSubsystem(functionModuleId, subsystemId);
+    res.json({ message: '更新子系统成功' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

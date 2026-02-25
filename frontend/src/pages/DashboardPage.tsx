@@ -143,8 +143,8 @@ export function DashboardPage() {
           <Button size="large" onClick={() => navigate('/architecture')}>
             <ApartmentOutlined /> 架构全景图
           </Button>
-          <Button size="large" onClick={() => navigate('/subsystems')}>
-            <PartitionOutlined /> 子系统管理
+          <Button size="large" onClick={() => navigate('/function-modules')}>
+            <PartitionOutlined /> 功能模块管理
           </Button>
         </Space>
       </Card>

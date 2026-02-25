@@ -41,21 +41,21 @@ function insertDefaultData() {
     console.log(`用户已创建: ${user.username}`);
   }
 
-  // 插入默认子系统
-  const subsystems = [
-    { name: 'user_service', description: '用户服务子系统', owner: '张三' },
-    { name: 'order_service', description: '订单服务子系统', owner: '李四' },
-    { name: 'product_service', description: '商品服务子系统', owner: '王五' },
+  // 插入默认功能模块
+  const functionModules = [
+    { name: 'user_service', description: '用户服务功能模块', owner: '张三' },
+    { name: 'order_service', description: '订单服务功能模块', owner: '李四' },
+    { name: 'product_service', description: '商品服务功能模块', owner: '王五' },
   ];
 
-  const insertSubsystem = db.prepare(`
-    INSERT OR IGNORE INTO subsystems (name, description, owner)
+  const insertFunctionModule = db.prepare(`
+    INSERT OR IGNORE INTO function_modules (name, description, owner)
     VALUES (?, ?, ?)
   `);
 
-  for (const subsystem of subsystems) {
-    insertSubsystem.run(subsystem.name, subsystem.description, subsystem.owner);
-    console.log(`子系统已创建: ${subsystem.name}`);
+  for (const module of functionModules) {
+    insertFunctionModule.run(module.name, module.description, module.owner);
+    console.log(`功能模块已创建: ${module.name}`);
   }
 
   // 插入默认词汇表
@@ -169,6 +169,43 @@ function insertDefaultData() {
       term.category
     );
     console.log(`词汇已添加: ${term.term}`);
+  }
+
+  // 插入架构层级默认数据
+  const layers = [
+    { id: 1, name: '基础层', level: 1, color: '#fa8c16', description: '基础设施服务，如用户中心、消息中心、配置中心', sort_order: 1 },
+    { id: 2, name: '领域层', level: 2, color: '#52c41a', description: '核心业务逻辑，如商品、订单、支付领域', sort_order: 2 },
+    { id: 3, name: '应用层', level: 3, color: '#1890ff', description: '面向用户的服务，如订单服务、用户服务', sort_order: 3 },
+  ];
+
+  const insertLayer = db.prepare(`
+    INSERT OR IGNORE INTO architecture_layers (id, name, level, color, description, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+
+  for (const layer of layers) {
+    insertLayer.run(layer.id, layer.name, layer.level, layer.color, layer.description, layer.sort_order);
+    console.log(`架构层级已创建: ${layer.name}`);
+  }
+
+  // 为现有功能模块设置默认层级
+  db.prepare(`UPDATE function_modules SET layer_level = 3 WHERE layer_level IS NULL`).run();
+
+  // 插入架构规则默认数据
+  const rules = [
+    { rule_type: 'layer_dependency', name: '层级依赖规则', description: '上层可以依赖下层，下层不能依赖上层', config: '{"allowSameLayer": true, "allowCrossLayer": "downOnly"}' },
+    { rule_type: 'circular', name: '循环依赖检查', description: '禁止循环依赖', config: '{}' },
+    { rule_type: 'cross_subsystem', name: '跨子系统依赖警告', description: '跨子系统的依赖给出警告', config: '{"warning": true}' },
+  ];
+
+  const insertRule = db.prepare(`
+    INSERT OR IGNORE INTO architecture_rules (rule_type, name, description, config)
+    VALUES (?, ?, ?, ?)
+  `);
+
+  for (const rule of rules) {
+    insertRule.run(rule.rule_type, rule.name, rule.description, rule.config);
+    console.log(`架构规则已创建: ${rule.name}`);
   }
 
   console.log('\n默认数据插入完成');

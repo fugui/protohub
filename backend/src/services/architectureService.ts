@@ -4,15 +4,15 @@
  */
 
 import { architectureLayerRepository } from '../models/ArchitectureLayer';
-import { subsystemGroupRepository } from '../models/SubsystemGroup';
-import { subsystemGroupMemberRepository } from '../models/SubsystemGroupMember';
+import { subsystemRepository } from '../models/Subsystem';
+import { subsystemMemberRepository } from '../models/SubsystemMember';
 import { architectureNodePositionRepository } from '../models/ArchitectureNodePosition';
 import { architectureSnapshotRepository } from '../models/ArchitectureSnapshot';
-import { subsystemRepository } from '../models/Subsystem';
+import { functionModuleRepository } from '../models/FunctionModule';
 import { dependencyRepository } from '../models/Dependency';
 import { protoFileRepository } from '../models/ProtoFile';
 import type { ArchitectureLayerEntity } from '../models/ArchitectureLayer';
-import type { SubsystemGroupEntity } from '../models/SubsystemGroup';
+import type { SubsystemEntity } from '../models/Subsystem';
 import type { ArchitectureNodePositionEntity } from '../models/ArchitectureNodePosition';
 
 // ============================================
@@ -21,28 +21,28 @@ import type { ArchitectureNodePositionEntity } from '../models/ArchitectureNodeP
 
 export interface ArchitectureNode {
   id: string;
-  type: 'subsystem' | 'group';
+  type: 'function_module' | 'subsystem';
   name: string;
   layerLevel: number;
   x: number;
   y: number;
   width: number;
   height: number;
-  combo?: string;  // 所属分组的 ID（G6 Combo 用）
-  parentGroupId?: string;
+  combo?: string;  // 所属子系统的 ID（G6 Combo 用）
+  parentSubsystemId?: string;
   style?: {
     color: string;
     borderColor?: string;
   };
-  // 子系统特有
-  subsystemInfo?: {
+  // 功能模块特有
+  functionModuleInfo?: {
     id: number;
     fileCount: number;
     dependenciesIn: number;
     dependenciesOut: number;
   };
-  // 分组特有
-  groupInfo?: {
+  // 子系统特有
+  subsystemInfo?: {
     id: number;
     collapsed: boolean;
     childrenCount: number;
@@ -65,7 +65,7 @@ export interface ArchitectureEdge {
 }
 
 /**
- * G6 Combo 数据结构 - 表示分组容器
+ * G6 Combo 数据结构 - 表示子系统容器
  */
 export interface ArchitectureCombo {
   id: string;
@@ -83,7 +83,7 @@ export interface ArchitectureCombo {
     [key: string]: any;
   };
   data?: {
-    groupId: number;
+    subsystemId: number;
     color?: string | null;
     childrenCount: number;
     columns: number;
@@ -113,15 +113,15 @@ export function getArchitectureLayers(): ArchitectureLayerEntity[] {
 }
 
 // ============================================
-// 分组服务
+// 子系统服务
 // ============================================
 
-export function getSubsystemGroups(): SubsystemGroupEntity[] {
-  return subsystemGroupRepository.findAll();
+export function getSubsystems(): SubsystemEntity[] {
+  return subsystemRepository.findAll();
 }
 
-export function getGroupsByLayer(layerId: number): SubsystemGroupEntity[] {
-  return subsystemGroupRepository.findByLayer(layerId);
+export function getGroupsByLayer(layerId: number): SubsystemEntity[] {
+  return subsystemRepository.findByLayer(layerId);
 }
 
 export function createSubsystemGroup(data: {
@@ -132,11 +132,11 @@ export function createSubsystemGroup(data: {
   columns?: number;
   positionX?: number;
   positionY?: number;
-}): SubsystemGroupEntity {
-  const result = subsystemGroupRepository.insert({
+}): SubsystemEntity {
+  const result = subsystemRepository.insert({
     name: data.name,
     layer_id: data.layerId || null,
-    parent_group_id: data.parentGroupId || null,
+    parent_subsystem_id: data.parentGroupId || null,
     color: data.color || null,
     columns: data.columns !== undefined ? data.columns : 3,
     position_x: data.positionX || 0,
@@ -149,11 +149,11 @@ export function createSubsystemGroup(data: {
   });
   const id = Number(result.lastInsertRowid);
 
-  const group = subsystemGroupRepository.findById(id);
+  const group = subsystemRepository.findById(id);
   if (!group) {
     throw new Error('创建分组失败');
   }
-  return group as SubsystemGroupEntity;
+  return group as SubsystemEntity;
 }
 
 export function updateGroupPosition(
@@ -161,16 +161,16 @@ export function updateGroupPosition(
   x: number,
   y: number
 ): void {
-  subsystemGroupRepository.updatePosition(groupId, x, y);
+  subsystemRepository.updatePosition(groupId, x, y);
 }
 
 export function toggleGroupCollapsed(groupId: number, collapsed: boolean): void {
-  subsystemGroupRepository.toggleCollapsed(groupId, collapsed);
+  subsystemRepository.toggleCollapsed(groupId, collapsed);
 }
 
 export function deleteSubsystemGroup(groupId: number): void {
   // 删除分组（级联删除成员关联）
-  subsystemGroupRepository.delete(groupId);
+  subsystemRepository.delete(groupId);
 }
 
 export function updateGroupInfo(groupId: number, data: { columns?: number, name?: string, color?: string, layerId?: number }): void {
@@ -179,47 +179,47 @@ export function updateGroupInfo(groupId: number, data: { columns?: number, name?
   if (data.name !== undefined) updateData.name = data.name;
   if (data.color !== undefined) updateData.color = data.color;
   if (data.layerId !== undefined) updateData.layer_id = data.layerId;
-  subsystemGroupRepository.update(groupId, updateData);
+  subsystemRepository.update(groupId, updateData);
 }
 
 // ============================================
 // 分组成员服务
 // ============================================
 
-export function addSubsystemToGroup(
-  groupId: number,
+export function addToSubsystem(
   subsystemId: number,
+  functionModuleId: number,
   positionX?: number,
   positionY?: number
 ): void {
-  subsystemGroupMemberRepository.addToGroup(groupId, subsystemId, positionX, positionY);
+  subsystemMemberRepository.addToSubsystem(subsystemId, functionModuleId, positionX, positionY);
 }
 
-export function updateSubsystemGroup(
-  subsystemId: number,
-  newGroupId: number | null
+export function updateFunctionModuleSubsystem(
+  functionModuleId: number,
+  newSubsystemId: number | null
 ): void {
-  // First, get all current groups and remove from them
-  const currentGroups = subsystemGroupMemberRepository.getGroupsForSubsystem(subsystemId);
-  for (const oldGroupId of currentGroups) {
-    if (oldGroupId !== newGroupId) {
-      removeSubsystemFromGroup(oldGroupId, subsystemId);
+  // First, get all current subsystems and remove from them
+  const currentSubsystems = subsystemMemberRepository.getSubsystemsForFunctionModule(functionModuleId);
+  for (const oldSubsystemId of currentSubsystems) {
+    if (oldSubsystemId !== newSubsystemId) {
+      removeFromSubsystem(oldSubsystemId, functionModuleId);
     }
   }
 
-  // Then add to new group if not null and not already in it
-  if (newGroupId !== null && !currentGroups.includes(newGroupId)) {
-    addSubsystemToGroup(newGroupId, subsystemId);
+  // Then add to new subsystem if not null and not already in it
+  if (newSubsystemId !== null && !currentSubsystems.includes(newSubsystemId)) {
+    addToSubsystem(newSubsystemId, functionModuleId);
   }
 }
 
-export function removeSubsystemFromGroup(groupId: number, subsystemId: number): void {
-  subsystemGroupMemberRepository.removeFromGroup(groupId, subsystemId);
+export function removeFromSubsystem(subsystemId: number, functionModuleId: number): void {
+  subsystemMemberRepository.removeFromSubsystem(subsystemId, functionModuleId);
 }
 
-export function getSubsystemsInGroup(groupId: number): number[] {
-  const members = subsystemGroupMemberRepository.findByGroup(groupId);
-  return members.map(m => m.subsystem_id);
+export function getFunctionModulesInSubsystem(subsystemId: number): number[] {
+  const members = subsystemMemberRepository.findBySubsystem(subsystemId);
+  return members.map(m => m.function_module_id);
 }
 
 // ============================================
@@ -228,27 +228,27 @@ export function getSubsystemsInGroup(groupId: number): number[] {
 
 export function saveNodePosition(
   nodeId: string,
-  nodeType: 'subsystem' | 'group',
+  nodeType: 'function_module' | 'subsystem',
   x: number,
   y: number,
   layerLevel?: number,
-  parentGroupId?: number,
+  parentSubsystemId?: number,
   width: number = 120,
   height: number = 60
 ): void {
   architectureNodePositionRepository.savePosition(
-    nodeId, nodeType, x, y, layerLevel, parentGroupId, width, height
+    nodeId, nodeType, x, y, layerLevel, parentSubsystemId, width, height
   );
 }
 
 export function batchSaveNodePositions(
   positions: Array<{
     nodeId: string;
-    nodeType: 'subsystem' | 'group';
+    nodeType: 'function_module' | 'subsystem';
     x: number;
     y: number;
     layerLevel?: number;
-    parentGroupId?: number;
+    parentSubsystemId?: number;
     width?: number;
     height?: number;
   }>
@@ -268,22 +268,22 @@ export function buildArchitectureGraph(): ArchitectureGraph {
   // 1. 获取层级定义
   const layers = getArchitectureLayers();
 
-  // 2. 获取所有子系统
-  const subsystems = subsystemRepository.findAll();
+  // 2. 获取所有功能模块（作为图中的节点）
+  const functionModules = functionModuleRepository.findAll();
 
-  // 3. 获取所有分组
-  const groups = subsystemGroupRepository.findAll();
+  // 3. 获取所有子系统（作为 combo/分组）
+  const subsystems = subsystemRepository.findAll();
 
   // 4. 获取节点位置
   const positions = getNodePositions();
   const positionMap = new Map(positions.map(p => [p.node_id, p]));
 
-  // 5. 获取文件统计
+  // 5. 获取文件统计（按功能模块）
   const files = protoFileRepository.findAll();
   const fileCountMap = new Map<number, number>();
   files.forEach(f => {
-    if (f.subsystem_id) {
-      fileCountMap.set(f.subsystem_id, (fileCountMap.get(f.subsystem_id) || 0) + 1);
+    if (f.function_module_id) {
+      fileCountMap.set(f.function_module_id, (fileCountMap.get(f.function_module_id) || 0) + 1);
     }
   });
 
@@ -292,117 +292,117 @@ export function buildArchitectureGraph(): ArchitectureGraph {
   const depsInMap = new Map<number, number>();
   const depsOutMap = new Map<number, number>();
 
-  // 构建文件到子系统的映射
-  const fileSubsystemMap = new Map<number, number>();
+  // 构建文件到功能模块的映射
+  const fileFunctionModuleMap = new Map<number, number>();
   files.forEach(f => {
-    if (f.subsystem_id) {
-      fileSubsystemMap.set(f.id, f.subsystem_id);
+    if (f.function_module_id) {
+      fileFunctionModuleMap.set(f.id, f.function_module_id);
     }
   });
 
   deps.forEach(d => {
-    const targetSub = fileSubsystemMap.get(d.target_file_id);
-    if (targetSub) {
-      depsInMap.set(targetSub, (depsInMap.get(targetSub) || 0) + 1);
+    const targetFm = fileFunctionModuleMap.get(d.target_file_id);
+    if (targetFm) {
+      depsInMap.set(targetFm, (depsInMap.get(targetFm) || 0) + 1);
     }
     if (d.source_file_id) {
-      const sourceSub = fileSubsystemMap.get(d.source_file_id);
-      if (sourceSub) {
-        depsOutMap.set(sourceSub, (depsOutMap.get(sourceSub) || 0) + 1);
+      const sourceFm = fileFunctionModuleMap.get(d.source_file_id);
+      if (sourceFm) {
+        depsOutMap.set(sourceFm, (depsOutMap.get(sourceFm) || 0) + 1);
       }
     }
   });
 
-  // 7. 构建 combos（分组）
-  const combos: ArchitectureCombo[] = groups.map((group, index) => {
-    const layer = layers.find(l => l.id === group.layer_id);
-    // 获取分组位置，如果没有则使用默认值
+  // 7. 构建 combos（子系统作为容器）
+  const combos: ArchitectureCombo[] = subsystems.map((subsystem, index) => {
+    const layer = layers.find(l => l.id === subsystem.layer_id);
+    // 获取子系统位置，如果没有则使用默认值
     const defaultX = 100 + (index % 3) * 300;
     const defaultY = 100 + Math.floor(index / 3) * 250;
 
-    const pos = positionMap.get(`group_${group.id}`);
+    const pos = positionMap.get(`sub_${subsystem.id}`);
 
     return {
-      id: `group_${group.id}`,
+      id: `sub_${subsystem.id}`,
       type: 'combo',
-      label: group.name,
+      label: subsystem.name,
       layerLevel: layer?.level || 3,
-      collapsed: !!group.collapsed,
-      // 优先从 positionMap 取，其次是 group 的原字段，最后是默认值
-      x: pos?.x ?? (group.position_x !== 0 ? group.position_x : null) ?? defaultX,
-      y: pos?.y ?? (group.position_y !== 0 ? group.position_y : null) ?? defaultY,
+      collapsed: !!subsystem.collapsed,
+      // 优先从 positionMap 取，其次是 subsystem 的原字段，最后是默认值
+      x: pos?.x ?? (subsystem.position_x !== 0 ? subsystem.position_x : null) ?? defaultX,
+      y: pos?.y ?? (subsystem.position_y !== 0 ? subsystem.position_y : null) ?? defaultY,
       style: {
-        fill: group.color || '#fff7e6',
+        fill: subsystem.color || '#fff7e6',
         stroke: '#fa8c16',
         lineWidth: 2,
         lineDash: [5, 5],
       },
       data: {
-        groupId: group.id,
-        color: group.color,
-        columns: group.columns || 3,
-        childrenCount: getSubsystemsInGroup(group.id).length,
+        subsystemId: subsystem.id,
+        color: subsystem.color,
+        columns: subsystem.columns || 3,
+        childrenCount: getFunctionModulesInSubsystem(subsystem.id).length,
       },
     };
   });
 
-  // 8. 构建子系统节点，并查询所属分组
+  // 8. 构建功能模块节点，并查询所属子系统
   const nodes: ArchitectureNode[] = [];
 
-  // 构建子系统到分组的映射
-  const subsystemToGroupMap = new Map<number, string>();
-  groups.forEach(group => {
-    const members = subsystemGroupMemberRepository.findByGroup(group.id);
+  // 构建功能模块到子系统的映射
+  const functionModuleToSubsystemMap = new Map<number, string>();
+  subsystems.forEach(subsystem => {
+    const members = subsystemMemberRepository.findBySubsystem(subsystem.id);
     members.forEach(member => {
-      subsystemToGroupMap.set(member.subsystem_id, `group_${group.id}`);
+      functionModuleToSubsystemMap.set(member.function_module_id, `sub_${subsystem.id}`);
     });
   });
 
-  subsystems.forEach((sub, index) => {
-    const pos = positionMap.get(`sub_${sub.id}`);
-    const layerIndex = (sub.layer_level || 3) - 1;
+  functionModules.forEach((fm, index) => {
+    const pos = positionMap.get(`func_mod_${fm.id}`);
+    const layerIndex = (fm.layer_level || 3) - 1;
     const defaultX = 100 + (index % 5) * 150;
     const defaultY = 100 + layerIndex * 200;
 
-    // 获取所属分组的 ID
-    const comboId = subsystemToGroupMap.get(sub.id);
+    // 获取所属子系统的 ID
+    const comboId = functionModuleToSubsystemMap.get(fm.id);
 
     nodes.push({
-      id: `sub_${sub.id}`,
-      type: 'subsystem',
-      name: sub.name,
-      layerLevel: sub.layer_level || 3,
+      id: `func_mod_${fm.id}`,
+      type: 'function_module',
+      name: fm.name,
+      layerLevel: fm.layer_level || 3,
       x: pos?.x ?? defaultX,
       y: pos?.y ?? defaultY,
       width: pos?.width ?? 120,
       height: pos?.height ?? 60,
-      combo: comboId,  // G6 Combo 用 - 指定所属分组
-      parentGroupId: comboId,
+      combo: comboId,  // G6 Combo 用 - 指定所属子系统
+      parentSubsystemId: comboId,
       style: {
-        color: layers.find(l => l.level === (sub.layer_level || 3))?.color || '#91cc75',
+        color: layers.find(l => l.level === (fm.layer_level || 3))?.color || '#91cc75',
       },
-      subsystemInfo: {
-        id: sub.id,
-        fileCount: fileCountMap.get(sub.id) || 0,
-        dependenciesIn: depsInMap.get(sub.id) || 0,
-        dependenciesOut: depsOutMap.get(sub.id) || 0,
+      functionModuleInfo: {
+        id: fm.id,
+        fileCount: fileCountMap.get(fm.id) || 0,
+        dependenciesIn: depsInMap.get(fm.id) || 0,
+        dependenciesOut: depsOutMap.get(fm.id) || 0,
       },
     });
   });
 
-  // 9. 构建边（子系统级依赖）
+  // 9. 构建边（功能模块级依赖）
   const edgeMap = new Map<string, ArchitectureEdge>();
 
   deps.forEach(dep => {
-    const sourceSub = dep.source_file_id ? fileSubsystemMap.get(dep.source_file_id) : null;
-    const targetSub = fileSubsystemMap.get(dep.target_file_id);
+    const sourceFm = dep.source_file_id ? fileFunctionModuleMap.get(dep.source_file_id) : null;
+    const targetFm = fileFunctionModuleMap.get(dep.target_file_id);
 
-    if (sourceSub && targetSub && sourceSub !== targetSub) {
-      const edgeKey = `sub_${sourceSub}->sub_${targetSub}`;
+    if (sourceFm && targetFm && sourceFm !== targetFm) {
+      const edgeKey = `func_mod_${sourceFm}->func_mod_${targetFm}`;
 
       if (!edgeMap.has(edgeKey)) {
-        const sourceNode = nodes.find(n => n.id === `sub_${sourceSub}`);
-        const targetNode = nodes.find(n => n.id === `sub_${targetSub}`);
+        const sourceNode = nodes.find(n => n.id === `func_mod_${sourceFm}`);
+        const targetNode = nodes.find(n => n.id === `func_mod_${targetFm}`);
 
         const sourceLayer = sourceNode?.layerLevel || 3;
         const targetLayer = targetNode?.layerLevel || 3;
@@ -413,8 +413,8 @@ export function buildArchitectureGraph(): ArchitectureGraph {
 
         edgeMap.set(edgeKey, {
           id: edgeKey,
-          source: `sub_${sourceSub}`,
-          target: `sub_${targetSub}`,
+          source: `func_mod_${sourceFm}`,
+          target: `func_mod_${targetFm}`,
           sourceLayer,
           targetLayer,
           direction,
@@ -463,32 +463,32 @@ export function validateDependency(
   sourceId: string,
   targetId: string
 ): ValidationResult {
-  // 解析 ID
-  const sourceMatch = sourceId.match(/sub_(\d+)/);
-  const targetMatch = targetId.match(/sub_(\d+)/);
+  // 解析 ID (功能模块ID格式: func_mod_数字)
+  const sourceMatch = sourceId.match(/func_mod_(\d+)/);
+  const targetMatch = targetId.match(/func_mod_(\d+)/);
 
   if (!sourceMatch || !targetMatch) {
     return { valid: false, reason: '无效的节点ID', severity: 'error' };
   }
 
-  const sourceSubId = parseInt(sourceMatch[1]);
-  const targetSubId = parseInt(targetMatch[1]);
+  const sourceFmId = parseInt(sourceMatch[1]);
+  const targetFmId = parseInt(targetMatch[1]);
 
   // 1. 不能依赖自己
-  if (sourceSubId === targetSubId) {
-    return { valid: false, reason: '子系统不能依赖自己', severity: 'error' };
+  if (sourceFmId === targetFmId) {
+    return { valid: false, reason: '功能模块不能依赖自己', severity: 'error' };
   }
 
   // 2. 获取层级信息
-  const sourceSub = subsystemRepository.findById(sourceSubId);
-  const targetSub = subsystemRepository.findById(targetSubId);
+  const sourceFm = functionModuleRepository.findById(sourceFmId);
+  const targetFm = functionModuleRepository.findById(targetFmId);
 
-  if (!sourceSub || !targetSub) {
-    return { valid: false, reason: '子系统不存在', severity: 'error' };
+  if (!sourceFm || !targetFm) {
+    return { valid: false, reason: '功能模块不存在', severity: 'error' };
   }
 
-  const sourceLayer = sourceSub.layer_level || 3;
-  const targetLayer = targetSub.layer_level || 3;
+  const sourceLayer = sourceFm.layer_level || 3;
+  const targetLayer = targetFm.layer_level || 3;
 
   // 3. 下层不能依赖上层
   if (sourceLayer < targetLayer) {
@@ -500,14 +500,14 @@ export function validateDependency(
   }
 
   // 4. 检查循环依赖
-  const hasCycle = checkCircularDependency(sourceSubId, targetSubId);
+  const hasCycle = checkCircularDependency(sourceFmId, targetFmId);
   if (hasCycle) {
     return { valid: false, reason: '会产生循环依赖', severity: 'error' };
   }
 
   // 5. 同级依赖过多时警告
   if (sourceLayer === targetLayer) {
-    const siblingDeps = countSiblingDependencies(sourceSubId, sourceLayer);
+    const siblingDeps = countSiblingDependencies(sourceFmId, sourceLayer);
     if (siblingDeps > 5) {
       return {
         valid: true,

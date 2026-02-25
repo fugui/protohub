@@ -5,14 +5,14 @@ import { BaseRepository } from '../repositories/BaseRepository';
  */
 export interface ArchitectureNodePositionEntity {
   id: number;
-  node_id: string;           // 节点ID：sub_123 或 group_456
-  node_type: string;         // 'subsystem' 或 'group'
+  node_id: string;           // 节点ID：func_mod_123 或 sub_456
+  node_type: string;         // 'function_module' 或 'subsystem'
   x: number;
   y: number;
   width: number;
   height: number;
   layer_level?: number;
-  parent_group_id?: number;
+  parent_subsystem_id?: number;
   created_at: string;
   updated_at: string;
 }
@@ -40,32 +40,32 @@ export class ArchitectureNodePositionRepository extends BaseRepository<Architect
   }
 
   /**
-   * 根据分组获取节点
+   * 根据子系统获取节点
    */
-  findByGroup(groupId: number): ArchitectureNodePositionEntity[] {
-    return this.findMany({ parent_group_id: groupId });
+  findBySubsystem(subsystemId: number): ArchitectureNodePositionEntity[] {
+    return this.findMany({ parent_subsystem_id: subsystemId });
   }
 
   /**
    * 保存或更新节点位置
    */
   savePosition(
-    nodeId: string, 
-    nodeType: string, 
-    x: number, 
-    y: number, 
+    nodeId: string,
+    nodeType: string,
+    x: number,
+    y: number,
     layerLevel?: number,
-    parentGroupId?: number,
+    parentSubsystemId?: number,
     width: number = 120,
     height: number = 60
   ): void {
     const existing = this.findByNodeId(nodeId);
-    
+
     if (existing) {
       this.update(existing.id, {
         x, y, width, height,
         layer_level: layerLevel,
-        parent_group_id: parentGroupId,
+        parent_subsystem_id: parentSubsystemId,
         updated_at: new Date().toISOString()
       });
     } else {
@@ -74,7 +74,7 @@ export class ArchitectureNodePositionRepository extends BaseRepository<Architect
         node_type: nodeType,
         x, y, width, height,
         layer_level: layerLevel,
-        parent_group_id: parentGroupId,
+        parent_subsystem_id: parentSubsystemId,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
@@ -90,20 +90,20 @@ export class ArchitectureNodePositionRepository extends BaseRepository<Architect
     x: number;
     y: number;
     layerLevel?: number;
-    parentGroupId?: number;
+    parentSubsystemId?: number;
     width?: number;
     height?: number;
   }>): void {
     const db = this.getDb();
     const insertStmt = db.prepare(`
-      INSERT INTO ${this.tableName} 
-      (node_id, node_type, x, y, layer_level, parent_group_id, width, height, created_at, updated_at)
+      INSERT INTO ${this.tableName}
+      (node_id, node_type, x, y, layer_level, parent_subsystem_id, width, height, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    
+
     const updateStmt = db.prepare(`
-      UPDATE ${this.tableName} 
-      SET x = ?, y = ?, layer_level = ?, parent_group_id = ?, width = ?, height = ?, updated_at = ?
+      UPDATE ${this.tableName}
+      SET x = ?, y = ?, layer_level = ?, parent_subsystem_id = ?, width = ?, height = ?, updated_at = ?
       WHERE node_id = ?
     `);
 
@@ -111,16 +111,16 @@ export class ArchitectureNodePositionRepository extends BaseRepository<Architect
       for (const pos of positions) {
         const existing = this.findByNodeId(pos.nodeId);
         const now = new Date().toISOString();
-        
+
         if (existing) {
           updateStmt.run(
-            pos.x, pos.y, pos.layerLevel, pos.parentGroupId,
+            pos.x, pos.y, pos.layerLevel, pos.parentSubsystemId,
             pos.width || 120, pos.height || 60, now, pos.nodeId
           );
         } else {
           insertStmt.run(
             pos.nodeId, pos.nodeType, pos.x, pos.y,
-            pos.layerLevel, pos.parentGroupId,
+            pos.layerLevel, pos.parentSubsystemId,
             pos.width || 120, pos.height || 60, now, now
           );
         }

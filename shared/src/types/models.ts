@@ -48,7 +48,7 @@ export interface ProtoFileEntity {
   filename: string;
   file_path: string;
   package_name: string;
-  subsystem_id?: number | null;
+  function_module_id?: number | null;
   git_repo_id?: number | null;
   git_file_path?: string | null;
   status: FileStatus;
@@ -118,23 +118,43 @@ export interface ViolationEntity {
  */
 export interface DependencyEntity {
   id: number;
-  source_file_id?: number | null; // 可为空，表示子系统级依赖
-  source_subsystem_id?: number | null; // 对应的子系统ID
+  source_file_id?: number | null; // 可为空，表示功能模块级依赖
+  source_function_module_id?: number | null; // 对应的功能模块ID
   target_file_id: number;
   dependency_type: string;
   created_at: string;
 }
 
 /**
- * 数据库表: subsystems
+ * 数据库表: function_modules (功能模块，原子系统)
  */
-export interface SubsystemEntity {
+export interface FunctionModuleEntity {
   id: number;
   name: string;
   description?: string | null;
   owner?: string | null;
   layer_level?: number | null;  // 所属架构层级
   created_at: string;
+}
+
+/**
+ * 数据库表: subsystems (子系统，原分组)
+ */
+export interface SubsystemEntity {
+  id: number;
+  name: string;
+  layer_id?: number | null;
+  parent_subsystem_id?: number | null;
+  color?: string | null;
+  columns: number;
+  position_x?: number | null;
+  position_y?: number | null;
+  width: number;
+  height: number;
+  collapsed: number;
+  created_by?: number | null;
+  created_at: string;
+  updated_at: string;
 }
 
 /**

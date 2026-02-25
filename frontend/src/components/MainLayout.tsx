@@ -60,9 +60,9 @@ export function MainLayout() {
             label: '架构全景图',
         },
         {
-            key: '/subsystems',
+            key: '/function-modules',
             icon: <PartitionOutlined />,
-            label: '子系统管理',
+            label: '功能模块管理',
         },
         {
             key: '/vocabulary',

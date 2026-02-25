@@ -41,7 +41,21 @@
       "Bash(npm run dev)",
       "Bash(npx tsx watch:*)",
       "WebSearch",
-      "Bash(netstat -tlnp 2>/dev/null | grep -E \"3000|5173\" || ss -tlnp | grep -E \"3000|5173\")"
+      "Bash(netstat -tlnp 2>/dev/null | grep -E \"3000|5173\" || ss -tlnp | grep -E \"3000|5173\")",
+      "Bash(find . -name \"*.test.js\" -o -name \"*.spec.js\" 2>/dev/null | grep -v node_modules | head -10)",
+      "Bash(echo \"=== 需要修改的文件清单 ===\" && echo \"\" && echo \"1. 数据库脚本:\" && echo \"   ✓ scripts/init_schema.sql\" && echo \"   ✓ scripts/init_db.ts\" && echo \"\" && echo \"2. 后端模型 \\(models/\\):\" && ls src/models/*.ts 2>/dev/null | xargs -n1 basename && echo \"\" && echo \"3. 后端服务 \\(services/\\):\" && ls src/services/*.ts 2>/dev/null | xargs -n1 basename && echo \"\" && echo \"4. API 路由和控制器:\" && ls src/api/routes/*.ts src/api/controllers/*.ts 2>/dev/null | xargs -n1 basename && echo \"\" && echo \"5. 前端页面 \\(frontend/src/pages/\\):\" && ls frontend/src/pages/*.tsx 2>/dev/null | xargs -n1 basename && echo \"\" && echo \"6. 前端服务 \\(frontend/src/services/\\):\" && ls frontend/src/services/*.ts 2>/dev/null | xargs -n1 basename)",
+      "Bash(cd /home/fugui/codes/protohub/backend/src/models && \\\\\nmv Subsystem.ts FunctionModule.ts && \\\\\nmv SubsystemGroup.ts Subsystem.ts && \\\\\nmv SubsystemGroupMember.ts SubsystemMember.ts && \\\\\necho \"文件重命名完成\" && ls -la *.ts | grep -E \"Subsystem|Function\")",
+      "Bash(cd /home/fugui/codes/protohub/frontend/src/pages && mv SubsystemPage.tsx FunctionModulePage.tsx && echo \"文件已重命名\")",
+      "Bash(cd /home/fugui/codes/protohub/backend/src/services && sed -i 's/subsystemGroupRepository/subsystemRepository/g; s/subsystemGroupMemberRepository/subsystemMemberRepository/g; s/SubsystemGroupEntity/SubsystemEntity/g' architectureService.ts && echo \"替换完成\")",
+      "Bash(ss -tlnp | grep 3000)",
+      "Bash(cd /home/fugui/codes/protohub/frontend/src/pages && \\\\\nsed -i \"s|getAllSubsystems|getAllFunctionModules|g; s|subsystemService|functionModuleService|g; s|subsystems|functionModules|g; s|Subsystems|FunctionModules|g; s|Subsystem|FunctionModule|g; s|subsystemId|functionModuleId|g\" FileDetailPage.tsx && \\\\\necho \"替换完成\")",
+      "Bash(xargs -r kill -9)",
+      "Bash(pkill -f \"tsx.*src/index.ts\" && echo \"backend 进程已退出\" || echo \"进程未找到\")",
+      "Bash(ss -tlnp | grep 3000 || echo \"端口 3000 已释放\")",
+      "Bash(ss -tlnp | grep 3000 || echo \"端口 3000 未监听\")",
+      "Bash(fuser -k 3000/tcp 2>/dev/null || true\nsleep 2\nss -tlnp | grep 3000 || echo \"端口已释放\")",
+      "Bash(curl -s http://localhost:3000/api/v1/architecture/graph | python3 -m json.tool 2>&1 | head -150)",
+      "WebFetch(domain:g6.antv.antgroup.com)"
     ]
   }
 }

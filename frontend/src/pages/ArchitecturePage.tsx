@@ -1,6 +1,6 @@
 /**
  * 架构全景图页面 - 基于 AntV G6 Combo 模式
- * 使用 Combo 作为分组容器，子系统作为 Combo 内的节点
+ * 使用 Combo 作为子系统容器，功能模块作为 Combo 内的节点
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -19,6 +19,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Graph } from '@antv/g6';
 import { api } from '../services/api';
+
 import type { ArchitectureLayer, ArchitectureNode, ArchitectureEdge, ArchitectureGraph, ArchitectureCombo } from '../services/architectureService';
 
 const { Option } = Select;
@@ -52,7 +53,7 @@ export function ArchitecturePage() {
     editModeRef.current = editMode;
   }, [editMode]);
 
-  // 使用 ref 存储拖拽时的位置和节点ID，用于移出分组时保持位置
+  // 使用 ref 存储拖拽时的位置和节点ID，用于移出子系统时保持位置
   const dragPositionRef = useRef<{ nodeId: string; x: number; y: number } | null>(null);
 
   // 使用 ref 存储待保存的位置，用于防抖批量保存
@@ -113,7 +114,7 @@ export function ArchitecturePage() {
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight || 800,
 
-      // 节点配置 - 子系统
+      // 节点配置 - 功能模块
       node: {
         type: 'rect',
         style: {
@@ -143,14 +144,14 @@ export function ArchitecturePage() {
         },
       },
 
-      // Combo 配置 - 分组容器
+      // Combo 配置 - 子系统容器
       combo: {
         type: 'rect',
         style: {
           radius: 12,
           lineWidth: 2,
           lineDash: [6, 4],
-          // 标签显示在分组内部左上角
+          // 标签显示在子系统内部左上角
           labelText: (d: any) => d.data?.label || d.id,
           labelFontSize: 13,
           labelFontWeight: 'bold',
@@ -209,7 +210,7 @@ export function ArchitecturePage() {
           enable: () => editModeRef.current,
         },
         {
-          type: 'drag-node',
+          type: 'drag-element',
           enable: () => editModeRef.current,
           enableDelegate: true,
         },
@@ -281,7 +282,7 @@ export function ArchitecturePage() {
       const elementId = evt.target?.id || evt.elementId;
       if (!elementId || !editModeRef.current) return;
 
-      if (!elementId.startsWith('sub_') && !elementId.startsWith('group_')) return;
+      if (!elementId.startsWith('func_mod_') && !elementId.startsWith('sub_')) return;
 
       const nodeData = graph.getNodeData(elementId) || graph.getComboData(elementId);
       if (!nodeData) return;
@@ -292,13 +293,13 @@ export function ArchitecturePage() {
       const x = viewportPoint?.x ?? canvasPoint?.x ?? (nodeData as any).x ?? 0;
       const y = viewportPoint?.y ?? canvasPoint?.y ?? (nodeData as any).y ?? 0;
 
-      // 检查是否是被拖拽的子系统
-      if (elementId.startsWith('sub_')) {
+      // 检查是否是被拖拽的功能模块
+      if (elementId.startsWith('func_mod_')) {
         const pointX = canvasPoint?.x || x;
         const pointY = canvasPoint?.y || y;
         let targetComboId: string | null = null;
 
-        // 遍历所有的 Combo 判断子系统是否落入目标范围内
+        // 遍历所有的 Combo 判断功能模块是否落入目标范围内
         const allCombos = graph.getComboData();
         for (const combo of allCombos) {
           const comboModel = combo.data || combo;
@@ -326,10 +327,10 @@ export function ArchitecturePage() {
 
         if (normalizedTargetComboId !== normalizedCurrentComboId) {
           try {
-            const subId = elementId.replace('sub_', '');
-            const groupId = targetComboId ? parseInt(targetComboId.replace('group_', '')) : null;
+            const fmId = elementId.replace('func_mod_', '');
+            const groupId = targetComboId ? parseInt(targetComboId.replace('sub_', '')) : null;
 
-            // 记录拖拽位置和节点ID，用于移出分组时保持位置
+            // 记录拖拽位置和节点ID，用于移出子系统时保持位置
             if (!groupId) {
               const canvasPoint = evt.canvas;
               const viewportPoint = evt.viewport;
@@ -342,13 +343,13 @@ export function ArchitecturePage() {
               dragPositionRef.current = null;
             }
 
-            await api.put(`/architecture/subsystems/${subId}/group`, { groupId });
+            await api.put(`/architecture/function-modules/${fmId}/subsystem`, { subsystemId: groupId });
 
-            // 如果是移出分组，同时保存位置到后端（使用防抖避免 429）
+            // 如果是移出子系统，同时保存位置到后端（使用防抖避免 429）
             if (!groupId && dragPositionRef.current) {
               debouncedSavePositions([{
                 nodeId: elementId,
-                nodeType: 'subsystem',
+                nodeType: 'function_module',
                 x: dragPositionRef.current.x,
                 y: dragPositionRef.current.y,
                 layerLevel: model?.layerLevel,
@@ -356,7 +357,7 @@ export function ArchitecturePage() {
               }]);
             }
 
-            message.success(groupId ? '已移入新分组' : '已移出分组');
+            message.success(groupId ? '已移入新子系统' : '已移出子系统');
 
             // 刷新图数据并退出，不需要保存拖拽坐标
             const data = await fetchArchitectureData();
@@ -364,7 +365,7 @@ export function ArchitecturePage() {
             dragPositionRef.current = null; // 清空位置缓存
             return;
           } catch (e) {
-            message.error('切换分组失败');
+            message.error('切换子系统失败');
             dragPositionRef.current = null;
           }
         }
@@ -423,11 +424,11 @@ export function ArchitecturePage() {
 
               positionsToSave.push({
                 nodeId: n.id,
-                nodeType: 'subsystem',
+                nodeType: 'function_module',
                 x: gridX,
                 y: gridY,
                 layerLevel: n.data?.layerLevel || n.layerLevel || 3,
-                parentGroupId: parseInt(comboId.replace('group_', ''))
+                parentGroupId: parseInt(comboId.replace('sub_', ''))
               });
             });
 
@@ -447,11 +448,11 @@ export function ArchitecturePage() {
 
       // 使用防抖保存位置
       const comboId = (nodeData as any).combo;
-      const parentGroupId = comboId ? parseInt(comboId.replace('group_', '')) : null;
+      const parentGroupId = comboId ? parseInt(comboId.replace('sub_', '')) : null;
 
       debouncedSavePositions([{
         nodeId: elementId,
-        nodeType: elementId.startsWith('sub_') ? 'subsystem' : 'group',
+        nodeType: elementId.startsWith('func_mod_') ? 'function_module' : 'subsystem',
         x: x,
         y: y,
         layerLevel: model?.layerLevel,
@@ -567,11 +568,11 @@ export function ArchitecturePage() {
         if (Math.abs((n.x ?? 0) - gridX) > 0.5 || Math.abs((n.y ?? 0) - gridY) > 0.5) {
           positionsToSave.push({
             nodeId: n.id,
-            nodeType: 'subsystem',
+            nodeType: 'function_module',
             x: gridX,
             y: gridY,
             layerLevel: n.layerLevel,
-            parentGroupId: parseInt(comboId.replace('group_', ''))
+            parentGroupId: parseInt(comboId.replace('sub_', ''))
           });
         }
         n.x = gridX;
@@ -590,14 +591,14 @@ export function ArchitecturePage() {
     }
     // ----------------------------
 
-    // 转换子系统节点 - 包含位置信息
+    // 转换功能模块节点 - 包含位置信息
     const g6Nodes = data.nodes.map((node: ArchitectureNode) => {
-      // 判断是否是刚刚移出分组的节点（有拖拽位置缓存且匹配当前节点ID）
+      // 判断是否是刚刚移出子系统的节点（有拖拽位置缓存且匹配当前节点ID）
       const isRecentlyRemovedFromCombo = dragPositionRef.current?.nodeId === node.id;
 
-      // 对于没有 combo 的节点（未分组），使用随机位置避免堆叠在原分组位置
+      // 对于没有 combo 的节点（未归属子系统），使用随机位置避免堆叠在原子系统位置
       // 但如果刚刚拖拽移出，则使用拖拽位置
-      // 因为 node.x/y 可能是之前作为分组成员时的相对坐标
+      // 因为 node.x/y 可能是之前作为子系统成员时的相对坐标
       const hasValidPosition = node.x !== undefined && node.y !== undefined && node.combo;
 
       let nodeX: number;
@@ -635,7 +636,7 @@ export function ArchitecturePage() {
       return nodeData;
     });
 
-    // 转换分组为 Combo - 让 G6 根据内部子系统自动计算位置和大小
+    // 转换子系统为 Combo - 让 G6 根据内部功能模块自动计算位置和大小
     const g6Combos = (data.combos || []).map((combo: ArchitectureCombo) => ({
       id: combo.id,
       data: {
@@ -643,7 +644,7 @@ export function ArchitecturePage() {
         // 确保 label 字段在 data 中可访问到
         label: combo.label,
       },
-      // 不设置位置和大小，让 G6 根据内部子系统自动计算
+      // 不设置位置和大小，让 G6 根据内部功能模块自动计算
       style: {
         ...(combo.style || {}),
       },
@@ -809,7 +810,7 @@ export function ArchitecturePage() {
     }
   }, [editMode]);
 
-  // 创建分组
+  // 创建子系统
   const handleCreateGroup = async (values: any) => {
     try {
       await api.post('/architecture/groups', {
@@ -818,13 +819,13 @@ export function ArchitecturePage() {
         color: values.color,
         columns: values.columns || 3,
       });
-      message.success('分组创建成功');
+      message.success('子系统创建成功');
       setCreateGroupModalVisible(false);
       groupForm.resetFields();
       const data = await fetchArchitectureData();
       if (data) renderGraph(data);
     } catch (error) {
-      message.error('创建分组失败');
+      message.error('创建子系统失败');
     }
   };
 
@@ -836,15 +837,15 @@ export function ArchitecturePage() {
     return layer?.color || '#91cc75';
   };
 
-  // 获取子系统所属分组名称
+  // 获取功能模块所属子系统名称
   const getComboName = (comboId?: string) => {
     if (!comboId) return null;
     const combo = combos.find(c => c.id === comboId);
     return combo?.label || combo?.data?.label;
   };
 
-  // 获取分组包含的子系统列表
-  const getComboSubsystems = (comboId?: string): ArchitectureNode[] => {
+  // 获取子系统包含的功能模块列表
+  const getComboFunctionModules = (comboId?: string): ArchitectureNode[] => {
     if (!comboId) return [];
     // 从图中获取所有节点，筛选出属于该 combo 的节点
     const graph = graphRef.current;
@@ -884,7 +885,7 @@ export function ArchitecturePage() {
               icon={<PlusOutlined />}
               onClick={() => setCreateGroupModalVisible(true)}
             >
-              创建分组
+              创建子系统
             </Button>
             <Button
               type={editMode ? 'primary' : 'default'}
@@ -910,7 +911,7 @@ export function ArchitecturePage() {
           </Space>
           {editMode && (
             <Tag color="warning">
-              提示：点击打开侧边栏可修改子系统分组；拖拽子系统块可调整画布位置。
+              提示：点击打开侧边栏可修改功能模块所属子系统；拖拽功能模块块可调整画布位置。
             </Tag>
           )}
         </div>
@@ -947,17 +948,17 @@ export function ArchitecturePage() {
       >
         {selectedNode && (
           <div>
-            <p><strong>类型：</strong> {selectedNode.type === 'subsystem' ? '子系统' : '分组'}</p>
+            <p><strong>类型：</strong> {selectedNode.type === 'function_module' ? '功能模块' : '子系统'}</p>
             <div style={{ marginBottom: 16 }}>
               <strong>所属层级：</strong>
-              {editMode && selectedNode.type === 'subsystem' ? (
+              {editMode && selectedNode.type === 'function_module' ? (
                 <Select
                   value={selectedNode.layerLevel}
                   style={{ width: 150, marginLeft: 8 }}
                   onChange={async (val) => {
                     try {
-                      const subId = selectedNode.id.replace('sub_', '');
-                      await api.put(`/architecture/subsystems/${subId}/layer`, { layerLevel: val });
+                      const fmId = selectedNode.id.replace('func_mod_', '');
+                      await api.put(`/architecture/function-modules/${fmId}/layer`, { layerLevel: val });
                       message.success('层级修改成功');
                       setDrawerVisible(false);
                       const data = await fetchArchitectureData();
@@ -977,25 +978,25 @@ export function ArchitecturePage() {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <strong>所属分组：</strong>
-              {editMode && selectedNode.type === 'subsystem' ? (
+              <strong>所属子系统：</strong>
+              {editMode && selectedNode.type === 'function_module' ? (
                 <Select
                   value={selectedNode.combo || ''}
                   style={{ width: 200, marginLeft: 8 }}
                   allowClear
-                  placeholder="未分组"
+                  placeholder="未归属子系统"
                   onChange={async (val) => {
                     try {
-                      const subId = selectedNode.id.replace('sub_', '');
-                      const groupId = val ? parseInt(val.replace('group_', '')) : null;
-                      await api.put(`/architecture/subsystems/${subId}/group`, { groupId });
-                      message.success('分组修改成功');
+                      const fmId = selectedNode.id.replace('func_mod_', '');
+                      const subsystemId = val ? parseInt(val.replace('func_mod_', '')) : null;
+                      await api.put(`/architecture/function-modules/${fmId}/subsystem`, { subsystemId });
+                      message.success('所属子系统修改成功');
                       setDrawerVisible(false);
                       const data = await fetchArchitectureData();
                       if (data) renderGraph(data);
                     } catch (e) {
                       console.error(e);
-                      message.error('修改分组失败');
+                      message.error('修改所属子系统失败');
                     }
                   }}
                 >
@@ -1006,15 +1007,15 @@ export function ArchitecturePage() {
                   <Tag icon={<FolderOutlined />} color="orange" style={{ marginLeft: 8 }}>
                     {getComboName(selectedNode.combo)}
                   </Tag>
-                ) : <span style={{ marginLeft: 8, color: '#999' }}>未分组</span>
+                ) : <span style={{ marginLeft: 8, color: '#999' }}>未归属子系统</span>
               )}
             </div>
 
-            {selectedNode.subsystemInfo && (
+            {selectedNode.functionModuleInfo && (
               <>
-                <p><strong>接口文件数：</strong> {selectedNode.subsystemInfo.fileCount}</p>
-                <p><strong>被依赖数：</strong> {selectedNode.subsystemInfo.dependenciesIn}</p>
-                <p><strong>依赖其他数：</strong> {selectedNode.subsystemInfo.dependenciesOut}</p>
+                <p><strong>接口文件数：</strong> {selectedNode.functionModuleInfo.fileCount}</p>
+                <p><strong>被依赖数：</strong> {selectedNode.functionModuleInfo.dependenciesIn}</p>
+                <p><strong>依赖其他数：</strong> {selectedNode.functionModuleInfo.dependenciesOut}</p>
               </>
             )}
 
@@ -1023,8 +1024,8 @@ export function ArchitecturePage() {
               block
               style={{ marginTop: 24 }}
               onClick={() => {
-                if (selectedNode.type === 'subsystem') {
-                  navigate(`/subsystems/${selectedNode.id.replace('sub_', '')}`);
+                if (selectedNode.type === 'function_module') {
+                  navigate(`/function-modules/${selectedNode.id.replace('func_mod_', '')}`);
                 }
               }}
             >
@@ -1077,12 +1078,12 @@ export function ArchitecturePage() {
         )}
       </Drawer>
 
-      {/* 分组详情抽屉 */}
+      {/* 子系统详情抽屉 */}
       <Drawer
         title={
           <Space>
             <AppstoreOutlined />
-            <span>{selectedCombo?.label || selectedCombo?.data?.label || '分组详情'}</span>
+            <span>{selectedCombo?.label || selectedCombo?.data?.label || '子系统详情'}</span>
           </Space>
         }
         placement="right"
@@ -1094,7 +1095,7 @@ export function ArchitecturePage() {
           <div>
             <p>
               <strong>类型：</strong>
-              <Tag color="orange">分组</Tag>
+              <Tag color="orange">子系统</Tag>
             </p>
             {selectedCombo.layerLevel && (
               <p>
@@ -1111,7 +1112,7 @@ export function ArchitecturePage() {
                   style={{ width: 120, marginLeft: 8 }}
                   onChange={async (val) => {
                     try {
-                      const groupId = selectedCombo.id.replace('group_', '');
+                      const groupId = selectedCombo.id.replace('sub_', '');
                       await api.put(`/architecture/groups/${groupId}`, { columns: val });
                       message.success('列数设置成功');
 
@@ -1141,12 +1142,12 @@ export function ArchitecturePage() {
             </div>
 
             <h4 style={{ marginTop: 24, marginBottom: 16 }}>
-              <FolderOutlined /> 包含的子系统 ({getComboSubsystems(selectedCombo.id).length})
+              <FolderOutlined /> 包含的功能模块 ({getComboFunctionModules(selectedCombo.id).length})
             </h4>
             <List
               bordered
-              dataSource={getComboSubsystems(selectedCombo.id)}
-              renderItem={(subsystem: ArchitectureNode) => (
+              dataSource={getComboFunctionModules(selectedCombo.id)}
+              renderItem={(functionModule: ArchitectureNode) => (
                 <List.Item
                   actions={[
                     <Button
@@ -1154,7 +1155,7 @@ export function ArchitecturePage() {
                       size="small"
                       onClick={() => {
                         setComboDrawerVisible(false);
-                        navigate(`/subsystems/${subsystem.id.replace('sub_', '')}`);
+                        navigate(`/function-modules/${functionModule.id.replace('func_mod_', '')}`);
                       }}
                     >
                       查看
@@ -1162,19 +1163,19 @@ export function ArchitecturePage() {
                   ]}
                 >
                   <List.Item.Meta
-                    title={subsystem.name}
+                    title={functionModule.name}
                     description={
                       <Space direction="vertical" size={0}>
-                        <span>{subsystem.subsystemInfo?.fileCount || 0} 个接口文件</span>
+                        <span>{functionModule.functionModuleInfo?.fileCount || 0} 个接口文件</span>
                         <span>
-                          依赖: {subsystem.subsystemInfo?.dependenciesOut || 0} 入 / {subsystem.subsystemInfo?.dependenciesIn || 0} 出
+                          依赖: {functionModule.functionModuleInfo?.dependenciesOut || 0} 入 / {functionModule.functionModuleInfo?.dependenciesIn || 0} 出
                         </span>
                       </Space>
                     }
                   />
                 </List.Item>
               )}
-              locale={{ emptyText: '该分组暂无子系统' }}
+              locale={{ emptyText: '该子系统暂无功能模块' }}
             />
           </div>
         )}
@@ -1195,9 +1196,9 @@ export function ArchitecturePage() {
         <p style={{ color: '#666', fontSize: 14 }}>系统将自动验证依赖方向是否符合架构分层原则</p>
       </Modal>
 
-      {/* 创建分组模态框 */}
+      {/* 创建子系统模态框 */}
       <Modal
-        title="创建分组"
+        title="创建子系统"
         open={createGroupModalVisible}
         onOk={() => groupForm.submit()}
         onCancel={() => {
@@ -1207,9 +1208,9 @@ export function ArchitecturePage() {
       >
         <Form form={groupForm} layout="vertical" onFinish={handleCreateGroup}>
           <Form.Item
-            label="分组名称"
+            label="子系统名称"
             name="name"
-            rules={[{ required: true, message: '请输入分组名称' }]}
+            rules={[{ required: true, message: '请输入子系统名称' }]}
           >
             <Input placeholder="如：用户服务组" />
           </Form.Item>
@@ -1239,7 +1240,7 @@ export function ArchitecturePage() {
             label="网格列数"
             name="columns"
             initialValue={3}
-            tooltip="同组下子系统的排列列数"
+            tooltip="同子系统下功能模块的排列列数"
           >
             <Select>
               <Option value={1}>1 列</Option>

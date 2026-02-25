@@ -4,15 +4,21 @@
 
 import { Router } from 'express';
 import * as architectureController from '../controllers/architecture.controller';
-import { authMiddleware, requireRole } from '../../middlewares/auth';
+import { authMiddleware, requireRole, optionalAuth } from '../../middlewares/auth';
 
 const router = Router();
 
-// 所有路由需要认证
-router.use(authMiddleware);
+// 获取架构图数据（可选认证）
+router.get('/graph', optionalAuth, architectureController.getArchitectureGraph);
 
-// 获取架构图数据
-router.get('/graph', architectureController.getArchitectureGraph);
+// 层级管理（可选认证）
+router.get('/layers', optionalAuth, architectureController.getLayers);
+
+// 分组管理（可选认证）
+router.get('/groups', optionalAuth, architectureController.getGroups);
+
+// 以下路由需要认证
+router.use(authMiddleware);
 
 // 层级管理
 router.get('/layers', architectureController.getLayers);
@@ -45,5 +51,9 @@ router.put('/snapshots/:id/default', requireRole('admin'), architectureControlle
 // 子系统层级管理
 router.put('/subsystems/:id/layer', requireRole('admin'), architectureController.updateSubsystemLayer);
 router.put('/subsystems/:id/group', requireRole('admin'), architectureController.updateSubsystemGroup);
+
+// 功能模块管理
+router.put('/function-modules/:id/layer', requireRole('admin'), architectureController.updateSubsystemLayer);
+router.put('/function-modules/:id/subsystem', requireRole('admin'), architectureController.updateFunctionModuleSubsystem);
 
 export default router;

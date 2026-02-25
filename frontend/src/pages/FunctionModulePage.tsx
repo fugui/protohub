@@ -1,44 +1,44 @@
 /**
- * 子系统管理页面
+ * 功能模块管理页面
  */
 
 import { useState, useEffect } from 'react';
 import { Table, Button, Space, Modal, Form, Input, message, Popconfirm, Card, Descriptions } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, ApartmentOutlined, LogoutOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { getAllSubsystems, createSubsystem } from '../services/subsystemService';
+import { getAllFunctionModules, createFunctionModule } from '../services/functionModuleService';
 import { logout } from '../services/authService';
 import { useAuthStore } from '../store';
-import type { Subsystem } from 'protohub-shared';
+import type { FunctionModule } from 'protohub-shared';
 
 const { Column } = Table;
 
-export function SubsystemPage() {
+export function FunctionModulePage() {
   const [messageApi, contextHolder] = message.useMessage();
-  const [subsystems, setSubsystems] = useState<Subsystem[]>([]);
+  const [functionModules, setFunctionModules] = useState<FunctionModule[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingSubsystem, setEditingSubsystem] = useState<Subsystem | null>(null);
+  const [editingFunctionModule, setEditingFunctionModule] = useState<FunctionModule | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
-  const [selectedSubsystem, setSelectedSubsystem] = useState<Subsystem | null>(null);
+  const [selectedFunctionModule, setSelectedFunctionModule] = useState<FunctionModule | null>(null);
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.logout);
   const [form] = Form.useForm();
 
-  const fetchSubsystems = async () => {
+  const fetchFunctionModules = async () => {
     try {
       setLoading(true);
-      const data = await getAllSubsystems();
-      setSubsystems(data);
+      const data = await getAllFunctionModules();
+      setFunctionModules(data);
     } catch (error: any) {
-      messageApi.error('获取子系统列表失败');
+      messageApi.error('获取功能模块列表失败');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSubsystems();
+    fetchFunctionModules();
   }, []);
 
   const handleLogout = () => {
@@ -48,13 +48,13 @@ export function SubsystemPage() {
   };
 
   const handleAdd = () => {
-    setEditingSubsystem(null);
+    setEditingFunctionModule(null);
     form.resetFields();
     setModalVisible(true);
   };
 
-  const handleEdit = (record: Subsystem) => {
-    setEditingSubsystem(record);
+  const handleEdit = (record: FunctionModule) => {
+    setEditingFunctionModule(record);
     form.setFieldsValue(record);
     setModalVisible(true);
   };
@@ -63,7 +63,7 @@ export function SubsystemPage() {
     try {
       // TODO: 调用删除 API
       messageApi.success('删除成功');
-      fetchSubsystems();
+      fetchFunctionModules();
     } catch (error: any) {
       messageApi.error('删除失败');
     }
@@ -72,16 +72,16 @@ export function SubsystemPage() {
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields();
-      if (editingSubsystem) {
+      if (editingFunctionModule) {
         // TODO: 调用更新 API
         messageApi.success('更新成功');
       } else {
-        await createSubsystem(values);
+        await createFunctionModule(values);
         messageApi.success('创建成功');
       }
       setModalVisible(false);
       form.resetFields();
-      fetchSubsystems();
+      fetchFunctionModules();
     } catch (error: any) {
       if (error && error.message) {
         messageApi.error(error.message || '操作失败');
@@ -89,8 +89,8 @@ export function SubsystemPage() {
     }
   };
 
-  const handleViewDetail = (record: Subsystem) => {
-    setSelectedSubsystem(record);
+  const handleViewDetailFM = (record: FunctionModule) => {
+    setSelectedFunctionModule(record);
     setDetailVisible(true);
   };
 
@@ -99,11 +99,11 @@ export function SubsystemPage() {
       {contextHolder}
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
         <h1>
-          <ApartmentOutlined /> 子系统管理
+          <ApartmentOutlined /> 功能模块管理
         </h1>
         <Space>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-            新建子系统
+            新建功能模块
           </Button>
           <Button icon={<LogoutOutlined />} onClick={handleLogout}>
             退出
@@ -113,7 +113,7 @@ export function SubsystemPage() {
 
       <Card>
         <Table
-          dataSource={subsystems}
+          dataSource={functionModules}
           loading={loading}
           rowKey="id"
           pagination={{
@@ -142,7 +142,7 @@ export function SubsystemPage() {
           <Column
             title="操作"
             key="action"
-            render={(_, record: Subsystem) => (
+            render={(_, record: FunctionModule) => (
               <Space>
                 <Button
                   type="link"
@@ -155,13 +155,13 @@ export function SubsystemPage() {
                 <Button
                   type="link"
                   size="small"
-                  onClick={() => handleViewDetail(record)}
+                  onClick={() => handleViewDetailFM(record)}
                 >
                   详情
                 </Button>
                 <Popconfirm
                   title="确认删除"
-                  description="确定要删除这个子系统吗？"
+                  description="确定要删除这个功能模块吗？"
                   onConfirm={() => handleDelete(record.id)}
                   okText="确认"
                   cancelText="取消"
@@ -177,7 +177,7 @@ export function SubsystemPage() {
       </Card>
 
       <Modal
-        title={editingSubsystem ? '编辑子系统' : '新建子系统'}
+        title={editingFunctionModule ? '编辑功能模块' : '新建功能模块'}
         open={modalVisible}
         onOk={handleModalOk}
         onCancel={() => {
@@ -214,20 +214,20 @@ export function SubsystemPage() {
           </Button>,
         ]}
       >
-        {selectedSubsystem && (
+        {selectedFunctionModule && (
           <Descriptions column={1} bordered>
-            <Descriptions.Item label="ID">{selectedSubsystem.id}</Descriptions.Item>
-            <Descriptions.Item label="名称">{selectedSubsystem.name}</Descriptions.Item>
+            <Descriptions.Item label="ID">{selectedFunctionModule.id}</Descriptions.Item>
+            <Descriptions.Item label="名称">{selectedFunctionModule.name}</Descriptions.Item>
             <Descriptions.Item label="描述">
-              {selectedSubsystem.description || '-'}
+              {selectedFunctionModule.description || '-'}
             </Descriptions.Item>
-            {selectedSubsystem.owner && (
+            {selectedFunctionModule.owner && (
               <Descriptions.Item label="负责人">
-                {selectedSubsystem.owner}
+                {selectedFunctionModule.owner}
               </Descriptions.Item>
             )}
             <Descriptions.Item label="创建时间">
-              {new Date(selectedSubsystem.createdAt).toLocaleString('zh-CN')}
+              {new Date(selectedFunctionModule.createdAt).toLocaleString('zh-CN')}
             </Descriptions.Item>
           </Descriptions>
         )}

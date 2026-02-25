@@ -7,10 +7,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Descriptions, Button, Space, message, Input, Tag, Spin, Breadcrumb, Select, Form, Tabs, Upload } from 'antd';
 import { LockOutlined, UnlockOutlined, EditOutlined, ArrowLeftOutlined, CheckOutlined, SaveOutlined, InboxOutlined, GithubOutlined, FileTextOutlined, CloudUploadOutlined } from '@ant-design/icons';
 import { getFileById, updateFile, lockFile, unlockFile, submitReview, createFile } from '../services/fileService';
-import { getAllSubsystems } from '../services/subsystemService';
+import { getAllFunctionModules } from '../services/functionModuleService';
 import { createGitRepo, importFromGit } from '../services/gitService';
 import { useAuthStore } from '../store';
-import type { ProtoFileDetail, Subsystem } from 'protohub-shared';
+import type { ProtoFileDetail, FunctionModule } from 'protohub-shared';
 
 const { TextArea } = Input;
 const { Dragger } = Upload;
@@ -28,7 +28,7 @@ export function FileDetailPage() {
   const [editing, setEditing] = useState(false);
   const [content, setContent] = useState('');
   const [, setSubmittingReview] = useState(false);
-  const [subsystems, setSubsystems] = useState<Subsystem[]>([]);
+  const [functionModules, setFunctionModules] = useState<FunctionModule[]>([]);
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
   const [activeTab, setActiveTab] = useState('manual');
@@ -38,8 +38,8 @@ export function FileDetailPage() {
   useEffect(() => {
     if (isNew) {
       setLoading(true);
-      getAllSubsystems()
-        .then(setSubsystems)
+      getAllFunctionModules()
+        .then(setFunctionModules)
         .catch(() => message.error('获取子系统列表失败'))
         .finally(() => setLoading(false));
     } else {
@@ -122,7 +122,7 @@ export function FileDetailPage() {
 
       const formData = new FormData();
       formData.append('filename', values.filename);
-      formData.append('subsystemId', values.subsystemId);
+      formData.append('functionModuleId', values.functionModuleId);
       formData.append('content', values.content);
 
       const newFile = await createFile(formData);
@@ -147,7 +147,7 @@ export function FileDetailPage() {
       setCreating(true);
 
       const formData = new FormData();
-      formData.append('subsystemId', values.subsystemId);
+      formData.append('functionModuleId', values.functionModuleId);
       // Upload component returns fileList in value
       const fileObj = values.file[0].originFileObj;
       formData.append('file', fileObj);
@@ -257,11 +257,11 @@ export function FileDetailPage() {
 
                     <Form.Item
                       label="所属子系统"
-                      name="subsystemId"
+                      name="functionModuleId"
                       rules={[{ required: true, message: '请选择子系统' }]}
                     >
                       <Select placeholder="请选择子系统">
-                        {subsystems.map((sub) => (
+                        {functionModules.map((sub) => (
                           <Select.Option key={sub.id} value={sub.id}>
                             {sub.name}
                           </Select.Option>
@@ -306,11 +306,11 @@ export function FileDetailPage() {
                   <Form form={uploadForm} layout="vertical" onFinish={handleUploadCreate} style={{ marginTop: 16 }}>
                     <Form.Item
                       label="所属子系统"
-                      name="subsystemId"
+                      name="functionModuleId"
                       rules={[{ required: true, message: '请选择子系统' }]}
                     >
                       <Select placeholder="请选择子系统">
-                        {subsystems.map((sub) => (
+                        {functionModules.map((sub) => (
                           <Select.Option key={sub.id} value={sub.id}>
                             {sub.name}
                           </Select.Option>
@@ -426,7 +426,7 @@ export function FileDetailPage() {
   const canUnlock = file.locked && user && file.lockedBy && (user?.id === file.lockedBy?.id);
   const canSubmitReview = !file.locked && file.status === 'draft';
 
-  const getSubsystemName = (): string => {
+  const getFunctionModuleName = (): string => {
     if (typeof file.subsystem === 'object' && file.subsystem !== null) {
       return file.subsystem.name || '-';
     }
@@ -470,11 +470,11 @@ export function FileDetailPage() {
 
                     <Form.Item
                       label="所属子系统"
-                      name="subsystemId"
+                      name="functionModuleId"
                       rules={[{ required: true, message: '请选择子系统' }]}
                     >
                       <Select placeholder="请选择子系统">
-                        {subsystems.map((sub) => (
+                        {functionModules.map((sub) => (
                           <Select.Option key={sub.id} value={sub.id}>
                             {sub.name}
                           </Select.Option>
@@ -519,11 +519,11 @@ export function FileDetailPage() {
                   <Form form={uploadForm} layout="vertical" onFinish={handleUploadCreate} style={{ marginTop: 16 }}>
                     <Form.Item
                       label="所属子系统"
-                      name="subsystemId"
+                      name="functionModuleId"
                       rules={[{ required: true, message: '请选择子系统' }]}
                     >
                       <Select placeholder="请选择子系统">
-                        {subsystems.map((sub) => (
+                        {functionModules.map((sub) => (
                           <Select.Option key={sub.id} value={sub.id}>
                             {sub.name}
                           </Select.Option>
@@ -686,7 +686,7 @@ export function FileDetailPage() {
                 {new Date(file.lockedAt).toLocaleString('zh-CN')}
               </Descriptions.Item>
             )}
-            <Descriptions.Item label="子系统">{getSubsystemName()}</Descriptions.Item>
+            <Descriptions.Item label="子系统">{getFunctionModuleName()}</Descriptions.Item>
             <Descriptions.Item label="Git 仓库">{file.gitRepo?.name || '-'}</Descriptions.Item>
             <Descriptions.Item label="创建时间">
               {new Date(file.createdAt).toLocaleString('zh-CN')}
