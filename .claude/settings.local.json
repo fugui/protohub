@@ -55,7 +55,8 @@
       "Bash(ss -tlnp | grep 3000 || echo \"端口 3000 未监听\")",
       "Bash(fuser -k 3000/tcp 2>/dev/null || true\nsleep 2\nss -tlnp | grep 3000 || echo \"端口已释放\")",
       "Bash(curl -s http://localhost:3000/api/v1/architecture/graph | python3 -m json.tool 2>&1 | head -150)",
-      "WebFetch(domain:g6.antv.antgroup.com)"
+      "WebFetch(domain:g6.antv.antgroup.com)",
+      "Bash(git push)"
     ]
   }
 }
