@@ -40,7 +40,8 @@
       "Bash(mkdir:*)",
       "Bash(npm run dev)",
       "Bash(npx tsx watch:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(netstat -tlnp 2>/dev/null | grep -E \"3000|5173\" || ss -tlnp | grep -E \"3000|5173\")"
     ]
   }
 }
