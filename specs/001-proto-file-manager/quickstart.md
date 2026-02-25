@@ -16,7 +16,7 @@
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/your-org/protohub.git
+git clone https://github.com/fugui/protohub.git
 cd protohub
 git checkout 001-proto-file-manager
 ```
@@ -190,7 +190,7 @@ npm run dev
 2. 添加仓库配置
    - 点击"添加仓库"
    - 输入仓库名称（如: "user-proto-repo"）
-   - 输入仓库 URL（如: `https://github.com/your-org/user-proto.git`）
+   - 输入仓库 URL（如: `https://github.com/fugui/user-proto.git`）
    - 输入分支（如: `main`）
    - 输入认证凭据（HTTPS: 用户名/密码，或 SSH: 私钥）
 3. 点击"导入"按钮

@@ -311,6 +311,6 @@ MIT License - see LICENSE file for details
 
 ## 联系方式
 
-- 项目主页: [GitHub Repository](https://github.com/your-org/protohub)
-- 问题反馈: [Issues](https://github.com/your-org/protohub/issues)
+- 项目主页: [GitHub Repository](https://github.com/fugui/protohub)
+- 问题反馈: [Issues](https://github.com/fugui/protohub/issues)
 - 技术支持: support@protohub.com

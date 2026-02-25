@@ -122,7 +122,7 @@ export function MainLayout() {
                         <Button
                             type="link"
                             icon={<GithubOutlined />}
-                            href="https://github.com/your-org/protohub"
+                            href="https://github.com/fugui/protohub"
                             target="_blank"
                         />
                         <Dropdown menu={userMenu}>
