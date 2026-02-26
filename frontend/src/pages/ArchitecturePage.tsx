@@ -60,6 +60,9 @@ export function ArchitecturePage() {
   const pendingPositionsRef = useRef<any[]>([]);
   const savePositionsTimeoutRef = useRef<number | null>(null);
 
+  // 本地位置缓存：保存用户拖拽后的位置，优先于后端返回的位置
+  const localPositionCacheRef = useRef<Map<string, { x: number; y: number; timestamp: number }>>(new Map());
+
   // 获取架构图数据（不控制 loading，由调用方控制）
   const fetchArchitectureData = useCallback(async () => {
     try {
@@ -206,15 +209,6 @@ export function ArchitecturePage() {
           shadowBlur: 10,
         },
         {
-          type: 'drag-combo',
-          enable: () => editModeRef.current,
-        },
-        {
-          type: 'drag-element',
-          enable: () => editModeRef.current,
-          enableDelegate: true,
-        },
-        {
           type: 'hover-activate',
           degree: 1,
           state: 'hover',
@@ -288,10 +282,26 @@ export function ArchitecturePage() {
       if (!nodeData) return;
 
       const model = nodeData.data || nodeData;
-      const viewportPoint = evt.viewport;
+
+      // 获取位置：优先使用 G6 内部存储的位置（避免 evt.canvas 坐标双倍问题）
+      let x: number;
+      let y: number;
+
+      // 从事件中提取坐标（供后续使用）
       const canvasPoint = evt.canvas;
-      const x = viewportPoint?.x ?? canvasPoint?.x ?? (nodeData as any).x ?? 0;
-      const y = viewportPoint?.y ?? canvasPoint?.y ?? (nodeData as any).y ?? 0;
+      const viewportPoint = evt.viewport;
+
+      if (elementId.startsWith('sub_')) {
+        // 对于 combo，从 G6 内部获取最新位置（解决 evt.canvas 双倍坐标问题）
+        const comboData = graph.getComboData(elementId);
+        const style = comboData?.style as any;
+        x = style?.x ?? (comboData as any)?.x ?? 0;
+        y = style?.y ?? (comboData as any)?.y ?? 0;
+      } else {
+        // 对于普通节点，使用 canvas 坐标
+        x = canvasPoint?.x ?? viewportPoint?.x ?? (nodeData as any).x ?? 0;
+        y = canvasPoint?.y ?? viewportPoint?.y ?? (nodeData as any).y ?? 0;
+      }
 
       // 检查是否是被拖拽的功能模块
       if (elementId.startsWith('func_mod_')) {
@@ -450,6 +460,9 @@ export function ArchitecturePage() {
       const comboId = (nodeData as any).combo;
       const parentGroupId = comboId ? parseInt(comboId.replace('sub_', '')) : null;
 
+      // 保存到本地位置缓存，优先于后端返回的位置
+      localPositionCacheRef.current.set(elementId, { x, y, timestamp: Date.now() });
+
       debouncedSavePositions([{
         nodeId: elementId,
         nodeType: elementId.startsWith('func_mod_') ? 'function_module' : 'subsystem',
@@ -593,23 +606,23 @@ export function ArchitecturePage() {
 
     // 转换功能模块节点 - 包含位置信息
     const g6Nodes = data.nodes.map((node: ArchitectureNode) => {
-      // 判断是否是刚刚移出子系统的节点（有拖拽位置缓存且匹配当前节点ID）
-      const isRecentlyRemovedFromCombo = dragPositionRef.current?.nodeId === node.id;
+      // 检查本地缓存是否有该节点的位置（5秒内有效）
+      const cachedPos = localPositionCacheRef.current.get(node.id);
+      const isCacheValid = cachedPos && (Date.now() - cachedPos.timestamp < 5000);
 
       // 对于没有 combo 的节点（未归属子系统），使用随机位置避免堆叠在原子系统位置
-      // 但如果刚刚拖拽移出，则使用拖拽位置
-      // 因为 node.x/y 可能是之前作为子系统成员时的相对坐标
+      // 但优先使用本地缓存的位置
       const hasValidPosition = node.x !== undefined && node.y !== undefined && node.combo;
 
       let nodeX: number;
       let nodeY: number;
 
-      if (isRecentlyRemovedFromCombo) {
-        // 使用拖拽时的位置
-        nodeX = dragPositionRef.current!.x;
-        nodeY = dragPositionRef.current!.y;
+      if (isCacheValid) {
+        // 优先使用本地缓存的位置
+        nodeX = cachedPos!.x;
+        nodeY = cachedPos!.y;
       } else if (hasValidPosition) {
-        // 使用保存的位置
+        // 使用后端保存的位置
         nodeX = node.x!;
         nodeY = node.y!;
       } else {
@@ -636,19 +649,31 @@ export function ArchitecturePage() {
       return nodeData;
     });
 
-    // 转换子系统为 Combo - 让 G6 根据内部功能模块自动计算位置和大小
-    const g6Combos = (data.combos || []).map((combo: ArchitectureCombo) => ({
-      id: combo.id,
-      data: {
-        ...combo,
-        // 确保 label 字段在 data 中可访问到
-        label: combo.label,
-      },
-      // 不设置位置和大小，让 G6 根据内部功能模块自动计算
-      style: {
-        ...(combo.style || {}),
-      },
-    }));
+    // 转换子系统为 Combo - 优先使用本地缓存的位置
+    const g6Combos = (data.combos || []).map((combo: ArchitectureCombo) => {
+      // 检查本地缓存是否有该 combo 的位置（5秒内有效）
+      const cachedPos = localPositionCacheRef.current.get(combo.id);
+      const isCacheValid = cachedPos && (Date.now() - cachedPos.timestamp < 5000);
+
+      // 优先使用本地缓存，其次是后端返回的位置
+      const x = isCacheValid ? cachedPos!.x : ((combo as any).x ?? 0);
+      const y = isCacheValid ? cachedPos!.y : ((combo as any).y ?? 0);
+
+      return {
+        id: combo.id,
+        data: {
+          ...combo,
+          // 确保 label 字段在 data 中可访问到
+          label: combo.label,
+        },
+        style: {
+          ...(combo.style || {}),
+          // 设置位置，本地缓存优先
+          x,
+          y,
+        },
+      };
+    });
 
     // 转换边
     const g6Edges = data.edges.map((edge: ArchitectureEdge) => ({
@@ -723,18 +748,22 @@ export function ArchitecturePage() {
       graphRef.current.render();
     }
 
-    // G6 v5: 在渲染后更新 Combo 位置（仅在首次渲染或 combo 位置变化时）
+    // G6 v5: 在渲染后更新 Combo 位置（仅更新有本地缓存的 combo）
+    // 注意：没有缓存的 combo 保持 G6 当前位置，避免覆盖用户拖拽结果
     requestAnimationFrame(() => {
       if (!graphRef.current) return;
 
-      (data.combos || []).forEach((combo: ArchitectureCombo, index: number) => {
-        const x = (combo as any).x ?? 150 + (index % 2) * 400;
-        const y = (combo as any).y ?? 150 + Math.floor(index / 2) * 250;
+      (data.combos || []).forEach((combo: ArchitectureCombo) => {
+        // 只更新有本地缓存的 combo（5秒内有效）
+        const cachedPos = localPositionCacheRef.current.get(combo.id);
+        if (!cachedPos || (Date.now() - cachedPos.timestamp >= 5000)) {
+          return; // 跳过没有缓存或缓存过期的 combo
+        }
 
         try {
           graphRef.current?.updateComboData([{
             id: combo.id,
-            style: { x, y },
+            style: { x: cachedPos.x, y: cachedPos.y },
           }]);
         } catch (e) {
           console.warn('更新 Combo 位置失败:', combo.id, e);
