@@ -689,11 +689,37 @@ export function ArchitecturePage() {
     }));
 
     // 检查是否已有数据，避免不必要的 clear
-    const existingData = graphRef.current.getData();
-    const hasExistingData = existingData && (existingData.nodes?.length > 0 || existingData.combos?.length > 0);
+    let existingData: any;
+    let hasExistingData = false;
+    try {
+      existingData = graphRef.current.getData();
+      hasExistingData = existingData && (existingData.nodes?.length > 0 || existingData.combos?.length > 0);
+    } catch (e) {
+      console.warn('获取现有数据失败:', e);
+    }
 
-    if (hasExistingData) {
-      // 增量更新：只更新变化的数据，避免闪烁
+    // 检查是否有节点的 combo 发生变化（移入或移出子系统）
+    const comboChangedNodes = hasExistingData
+      ? g6Nodes.filter((newNode: any) => {
+          const oldNode = existingData?.nodes?.find((n: any) => n.id === newNode.id);
+          return oldNode?.combo !== newNode.combo;
+        })
+      : [];
+    const hasComboChange = comboChangedNodes.length > 0;
+
+    // 记录变化前 combo 的位置，用于保持左上角稳定
+    const comboPositionsBeforeChange = new Map<string, { x: number; y: number }>();
+    if (hasComboChange && hasExistingData) {
+      existingData?.combos?.forEach((combo: any) => {
+        const style = combo?.style;
+        if (style?.x !== undefined && style?.y !== undefined) {
+          comboPositionsBeforeChange.set(combo.id, { x: style.x, y: style.y });
+        }
+      });
+    }
+
+    if (hasExistingData && !hasComboChange) {
+      // 增量更新：只更新变化的数据，避免闪烁（仅当没有 combo 变化时）
       const existingNodeIds = new Set(existingData.nodes?.map((n: any) => n.id) || []);
       const existingComboIds = new Set(existingData.combos?.map((c: any) => c.id) || []);
       const existingEdgeIds = new Set(existingData.edges?.map((e: any) => e.id) || []);
@@ -739,39 +765,66 @@ export function ArchitecturePage() {
 
       graphRef.current.draw();
     } else {
-      // 首次渲染：使用 setData
+      // 首次渲染或有 combo 变化：使用完整重新渲染
       graphRef.current.setData({
         nodes: g6Nodes,
         edges: g6Edges,
         combos: g6Combos,
       });
       graphRef.current.render();
+
+      // 恢复 combo 位置以保持左上角稳定，并刷新 combo 边界
+      if (hasComboChange && comboPositionsBeforeChange.size > 0) {
+        requestAnimationFrame(() => {
+          if (!graphRef.current) return;
+
+          // 强制重新计算 combo 边界（因为 layout 配置为 false，这里不会自动布局）
+          // 使用 draw 来触发重新渲染
+          graphRef.current.draw();
+
+          // 在重新渲染后恢复位置（确保位置不被 G6 自动计算改变）
+          comboPositionsBeforeChange.forEach((pos, comboId) => {
+            try {
+              graphRef.current?.updateComboData([{
+                id: comboId,
+                style: { x: pos.x, y: pos.y },
+              }]);
+            } catch (e) {
+              console.warn('恢复 Combo 位置失败:', comboId, e);
+            }
+          });
+
+          graphRef.current.draw();
+        });
+      }
     }
 
-    // G6 v5: 在渲染后更新 Combo 位置（仅更新有本地缓存的 combo）
-    // 注意：没有缓存的 combo 保持 G6 当前位置，避免覆盖用户拖拽结果
-    requestAnimationFrame(() => {
-      if (!graphRef.current) return;
+    // G6 v5: 在增量更新后，更新有本地缓存的 combo 位置
+    // 如果是完整重新渲染（首次或有 combo 变化），则跳过，因为 setData 已经设置了正确位置
+    if (hasExistingData && !hasComboChange) {
+      requestAnimationFrame(() => {
+        if (!graphRef.current) return;
 
-      (data.combos || []).forEach((combo: ArchitectureCombo) => {
-        // 只更新有本地缓存的 combo（5秒内有效）
-        const cachedPos = localPositionCacheRef.current.get(combo.id);
-        if (!cachedPos || (Date.now() - cachedPos.timestamp >= 5000)) {
-          return; // 跳过没有缓存或缓存过期的 combo
-        }
+        (data.combos || []).forEach((combo: ArchitectureCombo) => {
+          // 只更新有本地缓存的 combo（5秒内有效）
+          const cachedPos = localPositionCacheRef.current.get(combo.id);
+          if (!cachedPos || (Date.now() - cachedPos.timestamp >= 5000)) {
+            return; // 跳过没有缓存或缓存过期的 combo
+          }
 
-        try {
-          graphRef.current?.updateComboData([{
-            id: combo.id,
-            style: { x: cachedPos.x, y: cachedPos.y },
-          }]);
-        } catch (e) {
-          console.warn('更新 Combo 位置失败:', combo.id, e);
-        }
+          try {
+            graphRef.current?.updateComboData([{
+              id: combo.id,
+              style: { x: cachedPos.x, y: cachedPos.y },
+            }]);
+          } catch (e) {
+            console.warn('更新 Combo 位置失败:', combo.id, e);
+          }
+        });
+
+        graphRef.current.draw();
       });
-
-      graphRef.current.draw();
-    });
+    }
   };
 
   // 验证并创建依赖边
