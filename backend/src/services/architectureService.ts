@@ -534,8 +534,8 @@ function checkCircularDependency(sourceId: number, targetId: number): boolean {
     if (visited.has(current)) continue;
     visited.add(current);
 
-    // 获取当前子系统的依赖
-    const files = protoFileRepository.findAll().filter(f => f.subsystem_id === current);
+    // 获取当前功能模块的文件
+    const files = protoFileRepository.findAll().filter(f => f.function_module_id === current);
     const fileIds = files.map(f => f.id);
 
     const deps = dependencyRepository.findAll().filter(d =>
@@ -545,8 +545,8 @@ function checkCircularDependency(sourceId: number, targetId: number): boolean {
     for (const dep of deps) {
       if (dep.source_file_id) {
         const sourceFile = protoFileRepository.findById(dep.source_file_id);
-        if (sourceFile?.subsystem_id) {
-          stack.push(sourceFile.subsystem_id);
+        if (sourceFile?.function_module_id) {
+          stack.push(sourceFile.function_module_id);
         }
       }
     }
@@ -556,7 +556,7 @@ function checkCircularDependency(sourceId: number, targetId: number): boolean {
 }
 
 function countSiblingDependencies(subsystemId: number, layer: number): number {
-  const files = protoFileRepository.findAll().filter(f => f.subsystem_id === subsystemId);
+  const files = protoFileRepository.findAll().filter(f => f.function_module_id === subsystemId);
   const fileIds = files.map(f => f.id);
 
   let count = 0;
@@ -565,9 +565,9 @@ function countSiblingDependencies(subsystemId: number, layer: number): number {
   for (const dep of deps) {
     if (fileIds.includes(dep.source_file_id || 0)) {
       const targetFile = protoFileRepository.findById(dep.target_file_id);
-      if (targetFile?.subsystem_id) {
-        const targetSub = subsystemRepository.findById(targetFile.subsystem_id);
-        if (targetSub?.layer_level === layer && targetFile.subsystem_id !== subsystemId) {
+      if (targetFile?.function_module_id) {
+        const targetFM = functionModuleRepository.findById(targetFile.function_module_id);
+        if (targetFM?.layer_level === layer && targetFile.function_module_id !== subsystemId) {
           count++;
         }
       }

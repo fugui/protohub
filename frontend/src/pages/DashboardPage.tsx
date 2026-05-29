@@ -48,10 +48,10 @@ export function DashboardPage() {
 
       const stats = {
         total: result.total,
-        draft: files.filter((f) => f.status === 'draft').length,
-        pending: files.filter((f) => f.status === 'pending_review').length,
-        approved: files.filter((f) => f.status === 'approved').length,
-        rejected: files.filter((f) => f.status === 'rejected').length,
+        draft: files.filter((f: ProtoFile) => f.status === 'draft').length,
+        pending: files.filter((f: ProtoFile) => f.status === 'pending_review').length,
+        approved: files.filter((f: ProtoFile) => f.status === 'approved').length,
+        rejected: files.filter((f: ProtoFile) => f.status === 'rejected').length,
       };
 
       setFileStats(stats);

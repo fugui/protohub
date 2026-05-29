@@ -44,7 +44,7 @@ export function getReport(reportId: number): CheckReport {
       id: file.id,
       filename: file.filename,
       packageName: file.package_name,
-      subsystem: file.subsystem_id,
+      subsystem: file.function_module_id,
       status: file.status,
       currentVersion: file.current_version,
       createdBy: createdBy ? {

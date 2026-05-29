@@ -32,7 +32,15 @@ export async function getFileById(fileId: number): Promise<ProtoFileDetail> {
  * 创建文件
  */
 export async function createFile(req: Request, data: CreateFileData) {
-  return createProtoFile(req, data);
+  const functionModuleId = data.functionModuleId ?? data.subsystemId;
+  if (functionModuleId === undefined) {
+    throw new Error('functionModuleId or subsystemId is required');
+  }
+  return createProtoFile(req, {
+    functionModuleId,
+    filename: data.filename,
+    content: data.content,
+  });
 }
 
 /**
@@ -101,7 +109,7 @@ export function submitReview(fileId: number, req: Request): SubmitReviewResponse
       id: file.id,
       filename: file.filename,
       packageName: file.package_name,
-      subsystem: file.subsystem_id,
+      subsystem: file.function_module_id,
       status: file.status,
       currentVersion: file.current_version,
       createdBy: submittedBy ? {

@@ -20,7 +20,7 @@ export class ProtoFileRepository extends BaseRepository<ProtoFileEntity> {
    * 根据子系统查询文件
    */
   findBySubsystem(subsystemId: number, params?: any): PaginatedResult<ProtoFileEntity> {
-    return this.findPaginated(params, { subsystem_id: subsystemId });
+    return this.findPaginated(params, { function_module_id: subsystemId });
   }
 
   /**

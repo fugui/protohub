@@ -248,7 +248,7 @@ export function VocabularyPage() {
       term.term.toLowerCase().includes(filter.toLowerCase()) ||
       term.description?.toLowerCase().includes(filter.toLowerCase()) ||
       term.descriptionEn?.toLowerCase().includes(filter.toLowerCase()) ||
-      term.aliases?.some(a => a.toLowerCase().includes(filter.toLowerCase()));
+      term.aliases?.some((a: string) => a.toLowerCase().includes(filter.toLowerCase()));
     
     const matchCategory = !categoryFilter || term.category === categoryFilter;
     

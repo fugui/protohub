@@ -352,7 +352,7 @@ function mapEntityToProtoFile(entity: any): ProtoFile {
     id: entity.id,
     filename: entity.filename,
     packageName: entity.package_name,
-    subsystem: entity.subsystem_id,
+    subsystem: entity.function_module_id,
     status: entity.status,
     currentVersion: entity.current_version,
     createdBy: { id: entity.created_by, username: '', email: '', role: 'developer', createdAt: '' },

@@ -89,7 +89,7 @@ export async function checkFile(fileId: number): Promise<CheckReport> {
       id: file.id,
       filename: file.filename,
       packageName: file.package_name,
-      subsystem: file.subsystem_id || undefined,
+      subsystem: file.function_module_id || undefined,
       status: file.status,
       currentVersion: file.current_version,
       createdBy: { id: file.created_by, username: '', email: '', role: 'developer', createdAt: '' },

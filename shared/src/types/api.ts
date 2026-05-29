@@ -187,6 +187,17 @@ export interface Subsystem {
 }
 
 /**
+ * 功能模块
+ */
+export interface FunctionModule {
+  id: number;
+  name: string;
+  description?: string;
+  owner?: string;
+  createdAt: string;
+}
+
+/**
  * 词汇术语
  */
 export interface VocabularyTerm {

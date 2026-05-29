@@ -41,7 +41,8 @@ export interface GetFilesParams {
  * 创建文件数据
  */
 export interface CreateFileData {
-  subsystemId: number;
+  subsystemId?: number;
+  functionModuleId?: number;
   filename?: string;
   content?: string;
 }
